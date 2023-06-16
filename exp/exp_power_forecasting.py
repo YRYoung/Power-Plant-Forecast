@@ -124,7 +124,7 @@ class ExpPowerForecast(ExpBasic):
 
         return self.model
 
-    def test(self, setting, test=0):
+    def test(self, setting, test=False):
         test_data, test_loader = self._get_data(flag='test')
         if test:
             print('loading model')

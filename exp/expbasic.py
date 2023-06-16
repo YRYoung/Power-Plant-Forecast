@@ -1,4 +1,3 @@
-import os
 import torch
 from models import TimesNet
 

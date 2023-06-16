@@ -1,9 +1,6 @@
-import os
-
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-import pandas as pd
 
 plt.switch_backend('agg')
 
@@ -56,14 +53,14 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 
-class dotdict(dict):
+class DotDict(dict):
     """dot.notation access to dictionary attributes"""
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
 
-class StandardScaler():
+class StandardScaler:
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std

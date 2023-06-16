@@ -1,11 +1,7 @@
 import argparse
-import os
 import torch
 from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
-from exp.exp_imputation import Exp_Imputation
 from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
-from exp.exp_anomaly_detection import Exp_Anomaly_Detection
-from exp.exp_classification import Exp_Classification
 import random
 import numpy as np
 
@@ -41,12 +37,6 @@ if __name__ == '__main__':
     parser.add_argument('--label_len', type=int, default=48, help='start token length')
     parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
     parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
-
-    # inputation task
-    parser.add_argument('--mask_rate', type=float, default=0.25, help='mask ratio')
-
-    # anomaly detection task
-    parser.add_argument('--anomaly_ratio', type=float, default=0.25, help='prior anomaly ratio (%)')
 
     # model define
     parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
@@ -110,12 +100,6 @@ if __name__ == '__main__':
         Exp = Exp_Long_Term_Forecast
     elif args.task_name == 'short_term_forecast':
         Exp = Exp_Short_Term_Forecast
-    elif args.task_name == 'imputation':
-        Exp = Exp_Imputation
-    elif args.task_name == 'anomaly_detection':
-        Exp = Exp_Anomaly_Detection
-    elif args.task_name == 'classification':
-        Exp = Exp_Classification
     else:
         Exp = Exp_Long_Term_Forecast
 

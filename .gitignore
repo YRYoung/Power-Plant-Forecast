@@ -141,3 +141,5 @@ dmypy.json
 /dataset/
 result_*
 
+.neptune
+

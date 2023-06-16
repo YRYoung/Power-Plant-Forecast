@@ -2,6 +2,7 @@ import os
 import time
 import warnings
 
+import neptune
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,6 +20,7 @@ class ExpPowerForecast(ExpBasic):
     def __init__(self, args):
         super(ExpPowerForecast, self).__init__(args)
         self._get_data = custom_data_provider(args)
+        self.writer = None
 
     def _build_model(self):
         return self.model_dict[self.args.model].Model(self.args).float()
@@ -56,6 +58,7 @@ class ExpPowerForecast(ExpBasic):
         return total_loss
 
     def train(self, setting):
+
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
@@ -71,6 +74,13 @@ class ExpPowerForecast(ExpBasic):
 
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
+
+        self.writer = neptune.init_run(
+            project="y.runyang/PowerForecast",
+            api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJhMTk3Y2ZmZi05NDA1LTQ0OWEtODdhZi1lMjJiNWExYzdkMmYifQ==",
+        )  # your credentials
+
+        self.writer['args'] = self.args
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
@@ -94,6 +104,8 @@ class ExpPowerForecast(ExpBasic):
                 loss = criterion(outputs, batch_y)
                 train_loss.append(loss.item())
 
+                self.writer['train/batch_loss'].append(loss.item())
+
                 if (i + 1) % 100 == 0:
                     print("\ti_batch: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                     speed = (time.time() - time_now) / iter_count
@@ -109,6 +121,10 @@ class ExpPowerForecast(ExpBasic):
             train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
+
+            self.writer['train/loss'].append(train_loss)
+            self.writer['val/loss'].append(vali_loss)
+            self.writer['test/loss'].append(test_loss)
 
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
@@ -171,16 +187,13 @@ class ExpPowerForecast(ExpBasic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        mae, mse, rmse, mape, mspe = metric(preds, trues)
-        print('mse:{}, mae:{}'.format(mse, mae))
-        f = open("result_long_term_forecast.txt", 'a')
-        f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}'.format(mse, mae))
-        f.write('\n')
-        f.write('\n')
-        f.close()
+        result = metric(preds, trues)
+        for name, d in zip(['mae', 'mse', 'rmse', 'mape', 'mspe'], result):
+            if not test:
+                self.writer[f'test/{name}'].append(d)
+            print(f'{name}: {d:.4f}')
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+        np.save(folder_path + 'metrics.npy', np.array([result]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
 

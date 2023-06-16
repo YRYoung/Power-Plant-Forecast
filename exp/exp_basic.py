@@ -27,14 +27,14 @@ class Exp_Basic(object):
             print('Use CPU')
         return device
 
-    def _get_data(self):
+    def _get_data(self, flag):
         pass
 
-    def vali(self):
+    def vali(self, **kwargs):
         pass
 
-    def train(self):
+    def train(self, **kwargs):
         pass
 
-    def test(self):
+    def test(self, **kwargs):
         pass

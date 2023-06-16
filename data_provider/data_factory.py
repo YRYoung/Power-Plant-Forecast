@@ -91,7 +91,7 @@ def custom_data_provider(args):
 
 def csv_loader(file_path, scale, freq, pred_len, gap_len, val_ratio=.2):
     # file_path = os.path.join(self.root_path, self.data_path)
-    df_raw = pd.read_csv(file_path)
+    df_raw = pd.read_csv(file_path, index_col=0)
     df_raw.index = pd.to_datetime(df_raw.index)
 
     val_len = int(val_ratio * len(df_raw))
@@ -108,13 +108,13 @@ def csv_loader(file_path, scale, freq, pred_len, gap_len, val_ratio=.2):
         scaler.fit(train_data.values)
         data = scaler.transform(data)
 
-    data_stamp = time_features(df_raw.index.values, freq=freq).transpose(1, 0)
+    data_stamp = time_features(df_raw.index, freq=freq).transpose(1, 0)
 
     type_map = {'train': 0, 'val': 1, 'test': 2}
 
     def return_data(flag: str):
         idx = type_map[flag]
         start, end = ranges[idx]
-        return data[start, end], data_stamp[start, end], (scaler if scale else None)
+        return data[start: end], data_stamp[start: end], (scaler if scale else None)
 
     return lambda flag: return_data(flag)

@@ -48,12 +48,9 @@ def data_provider(args, flag):
 
 
 def custom_data_provider(args):
-    pred_len = 3 * 4
-    gap_len = 4
     loader = csv_loader(file_path=os.path.join(args.root_path, args.data_path),
                         scale=True, freq=args.freq,
-                        pred_len=pred_len, gap_len=gap_len
-                        )
+                        pred_len=args.pred_len, gap_len=args.gap_len)
 
     def load_in_dict(flag):
         data, data_stamp, scaler = loader(flag=flag)
@@ -69,7 +66,7 @@ def custom_data_provider(args):
         data_set = DatasetCustom(
             data=data, data_stamp=data_stamp, scaler=scaler,
             seq_len=args.seq_len,
-            pred_len=pred_len, gap_len=gap_len
+            pred_len=args.pred_len, gap_len=args.gap_len
         )
 
         print(flag, len(data_set))

@@ -89,3 +89,30 @@ class DatasetEttMinute(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
+
+
+class DatasetCustom(Dataset):
+    def __init__(self, data, data_stamp, seq_len, pred_len, gap_len, scaler=None):
+        self.data = data
+        self.data_stamp = data_stamp
+
+        self.gap_len = gap_len
+        self.pred_len = pred_len
+        self.seq_len = seq_len
+
+        self.scaler = scaler
+
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+
+        r_begin = s_end + self.gap_len
+        r_end = r_begin + self.pred_len
+
+        seq_x, seq_y = self.data[s_begin:s_end], self.data[r_begin:r_end]
+        seq_x_mark, seq_y_mark = self.data_stamp[s_begin:s_end], self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return len(self.data) - self.seq_len - self.pred_len - self.gap_len + 1

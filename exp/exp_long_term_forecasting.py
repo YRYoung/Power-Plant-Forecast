@@ -17,6 +17,10 @@ class ExpLongTermForecast(ExpBasic):
     def __init__(self, args):
         super(ExpLongTermForecast, self).__init__(args)
 
+    def _get_data(self, flag):
+        data_set, data_loader = data_provider(self.args, flag)
+        return data_set, data_loader
+
     def _build_model(self):
         model = self.model_dict[self.args.model].Model(self.args).float()
 
@@ -29,12 +33,10 @@ class ExpLongTermForecast(ExpBasic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
-        return model_optim
+        return optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
     def _select_criterion(self):
-        criterion = nn.MSELoss()
-        return criterion
+        return nn.MSELoss()
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []

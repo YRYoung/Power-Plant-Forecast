@@ -1,7 +1,6 @@
 import argparse
 import torch
 from exp.exp_long_term_forecasting import ExpLongTermForecast
-from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
 import random
 import numpy as np
 
@@ -96,12 +95,7 @@ if __name__ == '__main__':
     print('Args in experiment:')
     print(args)
 
-    if args.task_name == 'long_term_forecast':
-        Exp = ExpLongTermForecast
-    elif args.task_name == 'short_term_forecast':
-        Exp = Exp_Short_Term_Forecast
-    else:
-        Exp = ExpLongTermForecast
+    Exp = ExpLongTermForecast
 
     if args.is_training:
         for ii in range(args.itr):

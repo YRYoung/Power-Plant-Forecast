@@ -1,27 +1,23 @@
 import os
 import numpy as np
 import pandas as pd
-import glob
-import re
-import torch
+
 from torch.utils.data import Dataset
 from sklearn.preprocessing import StandardScaler
 from utils.timefeatures import time_features
 from data_provider.m4 import M4Dataset, M4Meta
-from data_provider.uea import subsample, interpolate_missing, Normalizer
-from sktime.datasets import load_from_tsfile_to_dataframe
 import warnings
 
 warnings.filterwarnings('ignore')
 
 
-class Dataset_ETT_hour(Dataset):
+class DatasetEttHour(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None):
+                 target='OT', scale=True, timeenc=0, freq='h'):
         # size [seq_len, label_len, pred_len]
         # info
-        if size == None:
+        if size is None:
             self.seq_len = 24 * 4 * 4
             self.label_len = 24 * 4
             self.pred_len = 24 * 4
@@ -59,6 +55,8 @@ class Dataset_ETT_hour(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+        else:
+            raise ValueError('features should be "M", "MS" or "S"')
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -78,6 +76,8 @@ class Dataset_ETT_hour(Dataset):
         elif self.timeenc == 1:
             data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
             data_stamp = data_stamp.transpose(1, 0)
+        else:
+            raise ValueError
 
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
@@ -103,13 +103,13 @@ class Dataset_ETT_hour(Dataset):
         return self.scaler.inverse_transform(data)
 
 
-class Dataset_ETT_minute(Dataset):
+class DatasetEttMinute(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTm1.csv',
-                 target='OT', scale=True, timeenc=0, freq='t', seasonal_patterns=None):
+                 target='OT', scale=True, timeenc=0, freq='t'):
         # size [seq_len, label_len, pred_len]
         # info
-        if size == None:
+        if size is None:
             self.seq_len = 24 * 4 * 4
             self.label_len = 24 * 4
             self.pred_len = 24 * 4
@@ -147,6 +147,8 @@ class Dataset_ETT_minute(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+        else:
+            raise ValueError
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -168,7 +170,8 @@ class Dataset_ETT_minute(Dataset):
         elif self.timeenc == 1:
             data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
             data_stamp = data_stamp.transpose(1, 0)
-
+        else:
+            raise ValueError
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
@@ -193,13 +196,13 @@ class Dataset_ETT_minute(Dataset):
         return self.scaler.inverse_transform(data)
 
 
-class Dataset_Custom(Dataset):
+class DatasetCustom(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None):
+                 target='OT', scale=True, timeenc=0, freq='h'):
         # size [seq_len, label_len, pred_len]
         # info
-        if size == None:
+        if size is None:
             self.seq_len = 24 * 4 * 4
             self.label_len = 24 * 4
             self.pred_len = 24 * 4
@@ -247,6 +250,8 @@ class Dataset_Custom(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+        else:
+            raise ValueError
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -266,6 +271,8 @@ class Dataset_Custom(Dataset):
         elif self.timeenc == 1:
             data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
             data_stamp = data_stamp.transpose(1, 0)
+        else:
+            raise ValueError
 
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
@@ -290,10 +297,11 @@ class Dataset_Custom(Dataset):
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
 
-class Dataset_M4(Dataset):
+
+class DatasetM4(Dataset):
     def __init__(self, root_path, flag='pred', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=False, inverse=False, timeenc=0, freq='15min',
+                 features='S',
+                 target='OT', scale=False, inverse=False, timeenc=0,
                  seasonal_patterns='Yearly'):
         # size [seq_len, label_len, pred_len]
         # init
@@ -368,6 +376,7 @@ class Dataset_M4(Dataset):
             insample_mask[i, -len(ts):] = 1.0
         return insample, insample_mask
 
+
 class MSLSegLoader(Dataset):
     def __init__(self, root_path, win_size, step=1, flag="train"):
         self.flag = flag
@@ -388,9 +397,9 @@ class MSLSegLoader(Dataset):
     def __len__(self):
         if self.flag == "train":
             return (self.train.shape[0] - self.win_size) // self.step + 1
-        elif (self.flag == 'val'):
+        elif self.flag == 'val':
             return (self.val.shape[0] - self.win_size) // self.step + 1
-        elif (self.flag == 'test'):
+        elif self.flag == 'test':
             return (self.test.shape[0] - self.win_size) // self.step + 1
         else:
             return (self.test.shape[0] - self.win_size) // self.win_size + 1
@@ -399,13 +408,14 @@ class MSLSegLoader(Dataset):
         index = index * self.step
         if self.flag == "train":
             return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
-        elif (self.flag == 'val'):
+        elif self.flag == 'val':
             return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
-        elif (self.flag == 'test'):
+        elif self.flag == 'test':
             return np.float32(self.test[index:index + self.win_size]), np.float32(
                 self.test_labels[index:index + self.win_size])
         else:
             return np.float32(self.test[
-                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
-                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
-
+                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), \
+                np.float32(
+                    self.test_labels[
+                    index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])

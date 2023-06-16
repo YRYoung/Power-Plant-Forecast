@@ -1,5 +1,5 @@
 from data_provider.data_factory import data_provider
-from exp.exp_basic import Exp_Basic
+from exp.expbasic import ExpBasic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
 from utils.metrics import metric
 import torch
@@ -13,9 +13,9 @@ import numpy as np
 warnings.filterwarnings('ignore')
 
 
-class Exp_Long_Term_Forecast(Exp_Basic):
+class ExpLongTermForecast(ExpBasic):
     def __init__(self, args):
-        super(Exp_Long_Term_Forecast, self).__init__(args)
+        super(ExpLongTermForecast, self).__init__(args)
 
     def _build_model(self):
         model = self.model_dict[self.args.model].Model(self.args).float()

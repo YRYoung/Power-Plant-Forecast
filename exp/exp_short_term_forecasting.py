@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from data_provider.m4 import M4Meta
-from exp.exp_basic import Exp_Basic
+from exp.expbasic import ExpBasic
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
 from utils.losses import mape_loss, mase_loss, smape_loss
 from utils.m4_summary import M4Summary
@@ -16,7 +16,7 @@ import pandas
 warnings.filterwarnings('ignore')
 
 
-class Exp_Short_Term_Forecast(Exp_Basic):
+class Exp_Short_Term_Forecast(ExpBasic):
     def __init__(self, args):
         super(Exp_Short_Term_Forecast, self).__init__(args)
 

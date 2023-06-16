@@ -3,7 +3,7 @@ import torch
 from models import TimesNet
 
 
-class Exp_Basic(object):
+class ExpBasic(object):
     def __init__(self, args):
         self.args = args
         self.model_dict = {
@@ -14,7 +14,6 @@ class Exp_Basic(object):
 
     def _build_model(self):
         raise NotImplementedError
-        return None
 
     def _acquire_device(self):
         if self.args.use_gpu:

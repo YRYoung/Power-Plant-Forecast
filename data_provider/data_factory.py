@@ -63,7 +63,6 @@ def custom_data_provider(args):
     def provide(flag):
         istest = flag == 'test'
         dataset = allsets[type_map[flag]]
-        dataset.dataset.return_time = True
         data_loader = DataLoader(
             dataset,
             batch_size=1 if istest else args.batch_size,

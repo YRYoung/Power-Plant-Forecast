@@ -117,7 +117,8 @@ class ExpPowerForecast(ExpBasic):
                 self.writer['train/batch_loss'].append(loss.item())
 
                 if (i + 1) % 100 == 0 or i == num_batches - 1:
-                    print("\ti_batch: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
+                    print("\ti_batch: {0}/{2}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item(),
+                                                                                  num_batches))
                     speed = (time.time() - time_now) / iter_count
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
                     print('\tspeed: {:.4f}s/batch; left time: {:.4f}s'.format(speed, left_time))
@@ -152,6 +153,7 @@ class ExpPowerForecast(ExpBasic):
 
     def test(self, setting, test_only=False):
         test_data, test_loader = self._get_data(flag='test')
+        test_data.dataset.return_time = True
 
         result_df = pandas.DataFrame(index=test_data.dataset.data_time, columns=['target', 'prediction'])
         result_df.loc[:, 'target'] = test_data.dataset.data[:, -1]

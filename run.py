@@ -41,6 +41,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
     parser.add_argument('--model', type=str, required=False, default='TimesNet',
                         help='model name, options: [TimesNet]')
+    parser.add_argument('--tags', type=list, default=[], required=False, help='tags for this training session')
 
     # data loader
     parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset name')
@@ -112,8 +113,6 @@ if __name__ == '__main__':
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
 
-    print('Args in experiment:')
-    print(args)
 
     Exp = ExpLongTermForecast if args.task_name == 'long_term_forecast' else ExpPowerForecast
 

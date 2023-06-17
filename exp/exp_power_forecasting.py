@@ -95,6 +95,7 @@ class ExpPowerForecast(ExpBasic):
 
             self.model.train()
             epoch_time = time.time()
+            num_batches = len(train_loader)
             for i, (batch_x, batch_y, batch_x_mark, _) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
@@ -113,7 +114,7 @@ class ExpPowerForecast(ExpBasic):
 
                 self.writer['train/batch_loss'].append(loss.item())
 
-                if (i + 1) % 100 == 0:
+                if (i + 1) % 100 == 0 or i == num_batches - 1:
                     print("\ti_batch: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                     speed = (time.time() - time_now) / iter_count
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)

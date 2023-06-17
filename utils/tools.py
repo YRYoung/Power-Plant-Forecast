@@ -60,28 +60,12 @@ class DotDict(dict):
     __delattr__ = dict.__delitem__
 
 
-class StandardScaler:
-    def __init__(self, mean, std):
-        self.mean = mean
-        self.std = std
-
-    def transform(self, data):
-        return (data - self.mean) / self.std
-
-    def inverse_transform(self, data):
-        return (data * self.std) + self.mean
-
-
-def visual(true, preds=None, name='./pic/test.pdf'):
-    """
-    Results visualization
-    """
-    plt.figure()
-    plt.plot(true, label='GroundTruth', linewidth=2)
-    if preds is not None:
-        plt.plot(preds, label='Prediction', linewidth=2)
-    plt.legend()
-    plt.savefig(name, bbox_inches='tight')
+def plot_test(result_df):
+    fig = plt.figure(figsize=(20, 4))
+    ax = plt.gca()
+    sns.lineplot(data=result_df, palette="flare", ax=ax)
+    print('plot saved')
+    return fig
 
 
 def adjustment(gt, pred):

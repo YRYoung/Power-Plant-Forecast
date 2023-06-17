@@ -92,9 +92,11 @@ class DatasetEttMinute(Dataset):
 
 
 class DatasetCustom(Dataset):
-    def __init__(self, data, data_stamp, seq_len, pred_len, gap_len, scaler=None):
+    def __init__(self, data, data_stamp, data_time, seq_len, pred_len, gap_len, scaler=None):
         self.data = data
         self.data_stamp = data_stamp
+        self.data_time = data_time
+        self.return_time = False
 
         self.gap_len = gap_len
         self.pred_len = pred_len
@@ -111,8 +113,11 @@ class DatasetCustom(Dataset):
 
         seq_x, seq_y = self.data[s_begin:s_end], self.data[r_begin:r_end]
         seq_x_mark, seq_y_mark = self.data_stamp[s_begin:s_end], self.data_stamp[r_begin:r_end]
+        result = [seq_x, seq_y, seq_x_mark, seq_y_mark]
+        if self.return_time:
+            result += [[s_begin, s_end], [r_begin, r_end]]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        return result
 
     def __len__(self):
         return len(self.data) - self.seq_len - self.pred_len - self.gap_len + 1

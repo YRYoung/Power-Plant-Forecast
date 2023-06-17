@@ -4,6 +4,7 @@ import warnings
 
 import neptune
 import numpy as np
+import pandas
 import torch
 import torch.nn as nn
 from torch import optim
@@ -11,7 +12,7 @@ from torch import optim
 from data_provider.data_factory import custom_data_provider
 from exp.expbasic import ExpBasic
 from utils.metrics import metric
-from utils.tools import EarlyStopping, adjust_learning_rate, visual
+from utils.tools import EarlyStopping, adjust_learning_rate, plot_test
 
 warnings.filterwarnings('ignore')
 
@@ -146,21 +147,26 @@ class ExpPowerForecast(ExpBasic):
 
         return self.model
 
-    def test(self, setting, test=False):
+    def test(self, setting, test_only=False):
         test_data, test_loader = self._get_data(flag='test')
-        if test:
+
+        result_df = pandas.DataFrame(index=test_data.dataset.data_time, columns=['target', 'prediction'])
+        result_df.loc[:, 'target'] = test_data.dataset.data[:, -1]
+        result_df.loc[:, 'prediction'] = np.nan
+
+        if test_only:
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
 
-        preds = []
-        trues = []
-        folder_path = './test_results/' + setting + '/'
+        preds = np.zeros((len(test_loader), self.args.pred_len))
+        trues = np.zeros((len(test_loader), self.args.pred_len))
+        folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, _) in enumerate(test_loader):
+            for i, (batch_x, batch_y, batch_x_mark, _, indices_x, indices_y) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
@@ -169,29 +175,23 @@ class ExpPowerForecast(ExpBasic):
                 outputs = self.model(batch_x, batch_x_mark)
 
                 f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:].detach().cpu().numpy()
-                batch_y = batch_y[:, :, f_dim:].detach().cpu().numpy()
+                outputs = outputs[:, :, f_dim:].detach().cpu().numpy().squeeze()
+                batch_y = batch_y[:, :, f_dim:].detach().cpu().numpy().squeeze()
 
-                preds.append(outputs)
-                trues.append(batch_y)
+                preds[i, :] = outputs
+                trues[i, :] = batch_y
 
-                if i % 20 == 0:
-                    input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], batch_y[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], outputs[0, :, -1]), axis=0)
-                    visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
+                series = result_df.iloc[indices_y[0].item():indices_y[1].item(), :]
+                assert np.allclose(series.iloc[:, 0].values, batch_y.squeeze())
+                # if not np.all(np.isnan(series.iloc[:, 1])):
+                #     series.iloc[:, 1]=
+                series.iloc[:, 1] = outputs.squeeze()
 
-        preds = np.array(preds)
-        trues = np.array(trues)
-        print('test shape:', preds.shape, trues.shape)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-        print('test shape:', preds.shape, trues.shape)
-
-        # result save
-        folder_path = './results/' + setting + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        fig = plot_test(result_df)
+        if test_only:
+            fig.savefig(os.path.join(folder_path, 'result.pdf'))
+        else:
+            self.writer['test'].upoad(fig)
 
         result = metric(preds, trues)
         for name, d in zip(['mae', 'mse', 'rmse', 'mape', 'mspe'], result):

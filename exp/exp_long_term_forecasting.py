@@ -154,12 +154,6 @@ class ExpLongTermForecast(ExpBasic):
                 preds.append(outputs)
                 trues.append(batch_y)
 
-                if i % 20 == 0:
-                    input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], batch_y[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], outputs[0, :, -1]), axis=0)
-                    visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
-
         preds = np.array(preds)
         trues = np.array(trues)
         print('test shape:', preds.shape, trues.shape)

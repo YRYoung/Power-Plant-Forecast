@@ -77,8 +77,9 @@ def custom_data_provider(args):
 
 
 def csv_loader(file_path, scale, freq):
-    df_raw = pd.read_csv(file_path, index_col=0)[:1000]
+    df_raw = pd.read_csv(file_path, index_col=0)
     df_raw.index = pd.to_datetime(df_raw.index)
+    df_raw = df_raw.loc['2020-03-01':, :]
 
     data = df_raw.values
     if scale:

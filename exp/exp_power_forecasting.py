@@ -195,12 +195,8 @@ class ExpPowerForecast(ExpBasic):
 
         result = metric(preds, trues)
         for name, d in zip(['mae', 'mse', 'rmse', 'mape', 'mspe'], result):
-            if not test:
+            if not test_only:
                 self.writer[f'test/{name}'].append(d)
             print(f'{name}: {d:.4f}')
 
         np.save(folder_path + 'metrics.npy', np.array([result]))
-        np.save(folder_path + 'pred.npy', preds)
-        np.save(folder_path + 'true.npy', trues)
-
-        return

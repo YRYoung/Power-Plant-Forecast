@@ -1,11 +1,10 @@
 import os
 
 import pandas as pd
-
-from data_provider.data_loader import DatasetEttMinute, DatasetCustom
-from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
+from torch.utils.data import DataLoader, random_split
 
+from data_provider.data_sets import DatasetEttMinute, DatasetCustom
 from utils.timefeatures import time_features
 
 data_dict = {
@@ -48,73 +47,46 @@ def data_provider(args, flag):
 
 
 def custom_data_provider(args):
-    loader = csv_loader(file_path=os.path.join(args.root_path, args.data_path),
-                        scale=True, freq=args.freq,
-                        pred_len=args.pred_len, gap_len=args.gap_len)
+    data, data_stamp, data_time, scaler = csv_loader(file_path=os.path.join(args.root_path, args.data_path),
+                                                     scale=True, freq=args.freq)
+    full_set = DatasetCustom(
+        data=data, data_stamp=data_stamp, data_time=data_time, scaler=scaler,
+        seq_len=args.seq_len, pred_len=args.pred_len, gap_len=args.gap_len
+    )
+    type_map = {'train': 0, 'val': 1, 'test': 2}
+    val_ratio = .2
 
-    def load_in_dict(flag):
-        data, data_stamp, scaler = loader(flag=flag)
-        drop_last = True
-        if flag == 'test':
-            shuffle_flag = False
-            batch_size = 1  # bsz=1 for evaluation
+    val_len = int(val_ratio * len(full_set))
+    train_len = len(full_set) - 2 * val_len
+    allsets = random_split(full_set, [train_len, val_len, val_len])
 
-        else:
-            shuffle_flag = True
-            batch_size = args.batch_size  # bsz for train and valid
-
-        data_set = DatasetCustom(
-            data=data, data_stamp=data_stamp, scaler=scaler,
-            seq_len=args.seq_len,
-            pred_len=args.pred_len, gap_len=args.gap_len
-        )
-
-        print(flag, len(data_set))
+    def provide(flag):
+        istest = flag == 'test'
+        dataset = allsets[type_map[flag]]
+        dataset.dataset.return_time = True
         data_loader = DataLoader(
-            data_set,
-            batch_size=batch_size,
-            shuffle=shuffle_flag,
+            dataset,
+            batch_size=1 if istest else args.batch_size,
+            shuffle=not istest,
             num_workers=args.num_workers,
-            drop_last=drop_last)
+            drop_last=True)
 
-        return data_set, data_loader
+        return dataset, data_loader
 
-    returns = {}
-
-    def lambda_provide(flag):
-        if flag not in returns:
-            returns[flag] = load_in_dict(flag)
-        return returns[flag]
-
-    return lambda flag: lambda_provide(flag)
+    return lambda flag: provide(flag)
 
 
-def csv_loader(file_path, scale, freq, pred_len, gap_len, val_ratio=.2):
-    # file_path = os.path.join(self.root_path, self.data_path)
-    df_raw = pd.read_csv(file_path, index_col=0)
+def csv_loader(file_path, scale, freq):
+    df_raw = pd.read_csv(file_path, index_col=0)[:1000]
     df_raw.index = pd.to_datetime(df_raw.index)
-
-    val_len = int(val_ratio * len(df_raw))
-    train_len = len(df_raw) - 2 * val_len
-
-    ranges = [[0, train_len]]
-    for i in range(1, 3):
-        ranges.append([ranges[i - 1][1] - pred_len - gap_len, ranges[i - 1][1] + val_len])
 
     data = df_raw.values
     if scale:
         scaler = StandardScaler()
-        train_data = df_raw[ranges[0][0]:ranges[0][1]]
-        scaler.fit(train_data.values)
+        scaler.fit(data)
         data = scaler.transform(data)
-
+    else:
+        scaler = None
     data_stamp = time_features(df_raw.index, freq=freq).transpose(1, 0)
 
-    type_map = {'train': 0, 'val': 1, 'test': 2}
-
-    def return_data(flag: str):
-        idx = type_map[flag]
-        start, end = ranges[idx]
-        return data[start: end], data_stamp[start: end], (scaler if scale else None)
-
-    return lambda flag: return_data(flag)
+    return data, data_stamp, df_raw.index, scaler

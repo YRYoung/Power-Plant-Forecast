@@ -19,8 +19,14 @@ warnings.filterwarnings('ignore')
 class ExpPowerForecast(ExpBasic):
     def __init__(self, args):
         super(ExpPowerForecast, self).__init__(args)
-        self._get_data = custom_data_provider(args)
         self.writer = None
+        self.provider = custom_data_provider(self.args)
+
+    def _get_data(self, flag):
+        returns = {}
+        if flag not in returns:
+            returns[flag] = self.provider(flag=flag)
+        return returns[flag]
 
     def _build_model(self):
         return self.model_dict[self.args.model].Model(self.args).float()

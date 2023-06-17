@@ -83,10 +83,12 @@ class ExpPowerForecast(ExpBasic):
         criterion = self._select_criterion()
 
         self.writer = neptune.init_run(
+
             project="y.runyang/PowerForecast",
             api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJhMTk3Y2ZmZi05NDA1LTQ0OWEtODdhZi1lMjJiNWExYzdkMmYifQ==",
         )  # your credentials
-
+        if self.args.tags:
+            self.writer['sys/tags'].add(self.args.tags)
         self.writer['args'] = self.args
 
         for epoch in range(self.args.train_epochs):

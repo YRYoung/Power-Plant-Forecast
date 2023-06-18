@@ -114,14 +114,15 @@ class ExpPowerForecast(ExpBasic):
                 loss = criterion(outputs, batch_y)
                 train_loss.append(loss.item())
 
-                self.writer['train/batch_loss'].append(loss.item())
+                if (i + 1) % 10 == 0:
+                    self.writer['train/batch_loss'].append(loss.item())
 
                 if (i + 1) % 100 == 0 or i == num_batches - 1:
-                    print("\ti_batch: {0}/{2}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item(),
-                                                                                  num_batches))
+                    print(f"\ti_batch: {i + 1}/{num_batches}, epoch: {epoch} | loss: {loss.item() :.5f}")
                     speed = (time.time() - time_now) / iter_count
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/batch; left time: {:.4f}s'.format(speed, left_time))
+                    left_time = left_time / 3600
+                    print('\tspeed: {:.4f}s/batch; left time: {:.4f}h'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
 

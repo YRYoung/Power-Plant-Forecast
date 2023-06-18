@@ -110,7 +110,6 @@ if __name__ == '__main__':
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
 
-
     Exp = ExpLongTermForecast if args.task_name == 'long_term_forecast' else ExpPowerForecast
 
     if args.is_training:

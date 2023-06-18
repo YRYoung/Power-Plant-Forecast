@@ -162,8 +162,8 @@ class ExpPowerForecast():
 
             adjust_learning_rate(model_optim, epoch + 1, self.args)
 
-        best_model_path = path + '/' + 'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
+        checkpoint = torch.load(self.best_model_path, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model'])
 
         return self.model
 

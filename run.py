@@ -1,25 +1,27 @@
 import argparse
 import random
+import warnings
 
 import numpy as np
 import torch
 
-from exp.exp_long_term_forecasting import ExpLongTermForecast
 from exp.exp_power_forecasting import ExpPowerForecast
+
+warnings.filterwarnings('ignore')
 
 
 def get_session_id(args):
-    return '{}_ft{}_sl{}_gap{}_pl{}_dm{}_el{}_dl{}_df{}_{}'.format(
-        args.model_id,
-        args.features,
-        args.seq_len,
-        args.gap_len,
-        args.pred_len,
+    session = '{}@iter{}_seq{}_gap{}_pred{}_dm{}_el{}_df{}'.format(
+        args.model_id, ii,
+        args.seq_len, args.gap_len, args.pred_len,
         args.d_model,
         args.e_layers,
-        args.d_layers,
         args.d_ff,
-        ii)
+    )
+    args.tags = args.tags.split(',')
+    if args.tags:
+        session += '_(' + '_'.join(args.tags) + ')'
+    return session
 
 
 if __name__ == '__main__':
@@ -40,9 +42,8 @@ if __name__ == '__main__':
                         help='model name, options: [TimesNet]')
     parser.add_argument('--tags', type=list, default=[], required=False, help='tags for this training session')
 
-    # data loader
-    parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset name')
-    parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
+    # data
+    # parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset name')
     parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
     parser.add_argument('--features', type=str, default='MS',
                         help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
@@ -60,12 +61,12 @@ if __name__ == '__main__':
     parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
     parser.add_argument('--num_kernels', type=int, default=6, help='for Inception Block')
     parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
-    parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
+    # parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=7, help='output size')
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
     # parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
     parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
-    parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
+    # parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
     parser.add_argument('--d_ff', type=int, default=2048, help='dimension of fcn')
     # parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
     # parser.add_argument('--factor', type=int, default=1, help='attn factor')
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
-    parser.add_argument('--des', type=str, default='test', help='exp description')
+    # parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='MSE', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
     # parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
@@ -115,20 +116,20 @@ if __name__ == '__main__':
     if args.is_training:
         for ii in range(args.itr):
             # setting record of experiments
-            setting = get_session_id(args)
+            args.session_id = get_session_id(args)
 
             exp = Exp(args)  # set experiments
-            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
+            print('>' * 10 + f'training : {args.session_id}' + '>' * 10)
+            exp.train()
 
-            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
+            print('>' * 10 + f'testing : {args.session_id}' + '>' * 10)
+            exp.test()
             torch.cuda.empty_cache()
     else:
         ii = 0
-        setting = get_session_id(args)
+        args.session_id = get_session_id(args)
 
         exp = Exp(args)  # set experiments
-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, test_only=True)
+        print('>' * 10 + f'testing : {args.session_id}' + '>' * 10)
+        exp.test(test_only=True)
         torch.cuda.empty_cache()

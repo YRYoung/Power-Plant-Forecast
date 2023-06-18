@@ -10,11 +10,10 @@ import torch.nn as nn
 from torch import optim
 
 from data_provider.data_factory import custom_data_provider
-from exp.expbasic import ExpBasic
+from models import TimesNet
 from utils.metrics import metric
 from utils.tools import EarlyStopping, adjust_learning_rate, plot_test, translate_seconds
 
-warnings.filterwarnings('ignore')
 
 class ExpPowerForecast():
     def __init__(self, args):

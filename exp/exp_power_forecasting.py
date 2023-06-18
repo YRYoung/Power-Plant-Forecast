@@ -12,7 +12,7 @@ from torch import optim
 from data_provider.data_factory import custom_data_provider
 from exp.expbasic import ExpBasic
 from utils.metrics import metric
-from utils.tools import EarlyStopping, adjust_learning_rate, plot_test
+from utils.tools import EarlyStopping, adjust_learning_rate, plot_test, translate_seconds
 
 warnings.filterwarnings('ignore')
 
@@ -90,11 +90,13 @@ class ExpPowerForecast():
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
-            train_loss = []
+            prefix = f'Epoch: {epoch} | \t'
+            num_batches = len(train_loader)
+            train_loss = np.zeros(num_batches)
 
             self.model.train()
             epoch_time = time.time()
-            num_batches = len(train_loader)
+
             for i, (batch_x, batch_y, batch_x_mark, _) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
@@ -114,32 +116,34 @@ class ExpPowerForecast():
                 if (i + 1) % 10 == 0:
                     self.writer['train/batch_loss'].append(loss.item())
 
-                if (i + 1) % 100 == 0 or i == num_batches - 1:
-                    print(f"\ti_batch: {i + 1}/{num_batches}, epoch: {epoch} | loss: {loss.item() :.5f}")
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    left_time = left_time / 3600
-                    print('\tspeed: {:.4f}s/batch; left time: {:.4f}h'.format(speed, left_time))
-                    iter_count = 0
-                    time_now = time.time()
+                    if (i + 1) % 100 == 0:
+                        speed = (time.time() - time_now) / iter_count
+                        print(prefix +
+                              f"batch: {i + 1}/{num_batches}, loss: {loss.item() :.5f} | {speed:.4f}s/batch")
+                        iter_count = 0
+                        time_now = time.time()
 
                 loss.backward()
                 model_optim.step()
 
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
             train_loss = np.average(train_loss)
-            vali_loss = self.vali(vali_data, vali_loader, criterion)
-            test_loss = self.vali(test_data, test_loader, criterion)
+
+            print(prefix + 'validating...', end='')
+            t = time.time()
+            vali_loss = self.vali(vali_loader, criterion)
+            test_loss = self.vali(test_loader, criterion)
+            print(f' | {translate_seconds(time.time() - t)}')
 
             self.writer['train/loss'].append(train_loss)
             self.writer['val/loss'].append(vali_loss)
             self.writer['test/loss'].append(test_loss)
 
-            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                epoch + 1, train_steps, train_loss, vali_loss, test_loss))
-            early_stopping(vali_loss, self.model, path)
-            if early_stopping.early_stop:
-                print("Early stopping")
+            print(prefix + "Train Loss: {0:.7f}, Vali Loss: {1:.7f}, Test Loss: {2:.7f} | {3}".format(
+                train_loss, vali_loss, test_loss,
+                translate_seconds(time.time() - epoch_time)))
+            self.early_stopping(vali_loss, self.model, prefix)
+            if self.early_stopping.stop:
+                print(prefix + "Early stopping")
                 break
 
             adjust_learning_rate(model_optim, epoch + 1, self.args)

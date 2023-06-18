@@ -69,10 +69,11 @@ class DotDict(dict):
 
 
 def plot_test(result_df):
-    fig = plt.figure(figsize=(20, 4))
+    global pic_id
+    fig = plt.figure(pic_id, figsize=(20, 4))
     ax = plt.gca()
-    sns.lineplot(data=result_df, palette="flare", ax=ax)
-    print('plot saved')
+    sns.lineplot(data=result_df, palette=['red', 'blue'], ax=ax)
+    pic_id += 1
     return fig
 
 

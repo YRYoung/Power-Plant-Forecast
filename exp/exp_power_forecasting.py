@@ -16,10 +16,9 @@ from utils.tools import EarlyStopping, adjust_learning_rate, plot_test
 
 warnings.filterwarnings('ignore')
 
-
-class ExpPowerForecast(ExpBasic):
+class ExpPowerForecast():
     def __init__(self, args):
-        super(ExpPowerForecast, self).__init__(args)
+        self.args = args
         self.writer = None
         self.provider = custom_data_provider(self.args)
 
@@ -29,17 +28,15 @@ class ExpPowerForecast(ExpBasic):
             returns[flag] = self.provider(flag=flag)
         return returns[flag]
 
-    def _build_model(self):
-        return self.model_dict[self.args.model].Model(self.args).float()
-
     def _select_optimizer(self):
         return optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
     def _select_criterion(self):
         return nn.MSELoss()
 
-    def vali(self, vali_data, vali_loader, criterion):
-        total_loss = []
+    def vali(self, vali_loader, criterion):
+        total_loss = np.zeros(len(vali_loader))
+
         self.model.eval()
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, _) in enumerate(vali_loader):
@@ -64,7 +61,7 @@ class ExpPowerForecast(ExpBasic):
         self.model.train()
         return total_loss
 
-    def train(self, setting):
+    def train(self):
 
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')

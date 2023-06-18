@@ -209,11 +209,14 @@ class ExpPowerForecast():
             self.writer['pred_time'] = pred_time
         result_df_original = result_df.copy(deep=True)
 
-        fig = plot_test(result_df)
-        if test_only:
-            fig.savefig(os.path.join(folder_path, 'result.pdf'))
-        else:
-            self.writer['test'].upoad(fig)
+        result_df_original.iloc[:, 0] = test_data.dataset.scalers[1].inverse_transform(result_df_original.iloc[:, [0]])
+        result_df_original.iloc[:, 1] = test_data.dataset.scalers[1].inverse_transform(result_df_original.iloc[:, [1]])
+
+        figs = plot_test(result_df), plot_test(result_df_original)
+        for i, fig in enumerate(figs):
+            if not test_only:
+                self.writer['result'].append(fig)
+            fig.savefig(os.path.join(result_path, f'result_{i}.pdf'))
 
         result = metric(preds, trues)
         for name, d in zip(['mae', 'mse', 'rmse', 'mape', 'mspe'], result):
@@ -221,4 +224,8 @@ class ExpPowerForecast():
                 self.writer[f'test/{name}'].append(d)
             print(f'{name}: {d:.4f}')
 
-        np.save(folder_path + 'metrics.npy', np.array([result]))
+        np.save(result_path + 'metrics.npy', np.array([result]))
+        result_df_original.to_csv(os.path.join(result_path, f'result_df.csv'))
+
+        if not test_only:
+            self.writer.stop()

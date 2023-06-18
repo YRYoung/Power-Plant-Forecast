@@ -167,46 +167,47 @@ class ExpPowerForecast():
 
         return self.model
 
-    def test(self, setting, test_only=False):
-        test_data, test_loader = self._get_data(flag='test')
+    def test(self, test_only=False):
+        print('Testing interference on cpu')
+        self.device = torch.device('cpu')
+        self.model = self.model.to(self.device)
+
+        test_data, test_loader = self._get_data(flag='final')
         test_data.dataset.return_time = True
 
         result_df = pandas.DataFrame(index=test_data.dataset.data_time, columns=['target', 'prediction'])
         result_df.loc[:, 'target'] = test_data.dataset.data[:, -1]
         result_df.loc[:, 'prediction'] = np.nan
 
-        if test_only:
-            print('loading model')
-            self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
+        num_batches = len(test_loader)
+        preds = np.zeros((num_batches, self.args.pred_len))
+        trues = np.zeros((num_batches, self.args.pred_len))
 
-        preds = np.zeros((len(test_loader), self.args.pred_len))
-        trues = np.zeros((len(test_loader), self.args.pred_len))
-        folder_path = './results/' + setting + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        result_path = './results/' + self.args.session_id + '/'
+        if not os.path.exists(result_path):
+            os.makedirs(result_path)
 
         self.model.eval()
+        pred_time = 0
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, _, indices_x, indices_y) in enumerate(test_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-
+                t_start = time.time()
                 outputs = self.model(batch_x, batch_x_mark)
-
+                pred_time += time.time() - t_start
                 f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:].detach().cpu().numpy().squeeze()
-                batch_y = batch_y[:, :, f_dim:].detach().cpu().numpy().squeeze()
+                outputs = outputs[:, :, f_dim:].numpy().squeeze()
+                batch_y = batch_y[:, :, f_dim:].numpy().squeeze()
 
                 preds[i, :] = outputs
                 trues[i, :] = batch_y
 
-                series = result_df.iloc[indices_y[0].item():indices_y[1].item(), :]
-                assert np.allclose(series.iloc[:, 0].values, batch_y.squeeze())
-                # if not np.all(np.isnan(series.iloc[:, 1])):
-                #     series.iloc[:, 1]=
-                series.iloc[:, 1] = outputs.squeeze()
+                result_df.iloc[indices_y[0].item():indices_y[1].item(), 1] = outputs.squeeze()
+
+        pred_time /= num_batches
+        print(f'Average Interference speed: {pred_time:.5f}sample/s')
+        if not test_only:
+            self.writer['pred_time'] = pred_time
+        result_df_original = result_df.copy(deep=True)
 
         fig = plot_test(result_df)
         if test_only:

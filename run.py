@@ -9,10 +9,8 @@ from exp.exp_power_forecasting import ExpPowerForecast
 
 
 def get_session_id(args):
-    return '_{}_{}_{}_ft{}_sl{}_gap{}_pl{}_dm{}_el{}_dl{}_df{}_eb{}_{}_{}'.format(
+    return '{}_ft{}_sl{}_gap{}_pl{}_dm{}_el{}_dl{}_df{}_{}'.format(
         args.model_id,
-        args.model,
-        args.data,
         args.features,
         args.seq_len,
         args.gap_len,
@@ -21,8 +19,7 @@ def get_session_id(args):
         args.e_layers,
         args.d_layers,
         args.d_ff,
-        args.embed,
-        args.des, ii)
+        ii)
 
 
 if __name__ == '__main__':

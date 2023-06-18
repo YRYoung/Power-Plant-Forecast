@@ -67,6 +67,10 @@ class ExpLongTermForecast(ExpBasic):
         if not os.path.exists(path):
             os.makedirs(path)
 
+        best_model_path = os.path.join('./checkpoints/' + setting, 'checkpoint.pth')
+        if os.path.exists(best_model_path):
+            self.model.load_state_dict(torch.load(best_model_path))
+            print('Fine tuning trained model')
         time_now = time.time()
 
         train_steps = len(train_loader)
@@ -122,7 +126,6 @@ class ExpLongTermForecast(ExpBasic):
 
             adjust_learning_rate(model_optim, epoch + 1, self.args)
 
-        best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
 
         return self.model

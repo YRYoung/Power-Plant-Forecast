@@ -1,6 +1,5 @@
 import os
 import time
-import warnings
 
 import neptune
 import numpy as np
@@ -93,7 +92,7 @@ class ExpPowerForecast():
         criterion = self._select_criterion()
 
         self.writer = neptune.init_run(
-
+            with_id=self.args.neptune_id,
             project="y.runyang/PowerForecast",
             api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJhMTk3Y2ZmZi05NDA1LTQ0OWEtODdhZi1lMjJiNWExYzdkMmYifQ==",
         )  # your credentials

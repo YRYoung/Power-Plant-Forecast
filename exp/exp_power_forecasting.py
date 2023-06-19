@@ -179,8 +179,8 @@ class ExpPowerForecast():
         result_df.loc[:, 'prediction'] = np.nan
 
         num_batches = len(test_loader)
-        preds = np.zeros((num_batches, self.args.pred_len))
-        trues = np.zeros((num_batches, self.args.pred_len))
+        preds = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
+        trues = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
 
         result_path = './results/' + self.args.session_id + '/'
         if not os.path.exists(result_path):
@@ -189,7 +189,8 @@ class ExpPowerForecast():
         self.model.eval()
         pred_time = 0
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, _, indices_x, indices_y) in enumerate(test_loader):
+            for i, (batch_x, batch_y, batch_x_mark, _, indices_x, indices_y) in tqdm(enumerate(test_loader),
+                                                                                     total=num_batches, desc='Test'):
                 t_start = time.time()
                 outputs = self.model(batch_x, batch_x_mark)
                 pred_time += time.time() - t_start
@@ -200,7 +201,8 @@ class ExpPowerForecast():
                 preds[i, :] = outputs
                 trues[i, :] = batch_y
 
-                result_df.iloc[indices_y[0].item():indices_y[1].item(), 1] = outputs.squeeze()
+                for i in range(test_loader.batch_size):
+                    result_df.iloc[indices_y[0][i].item():indices_y[1][i].item(), 1] = outputs[i, :]
 
         pred_time /= num_batches
         print(f'Average Interference speed: {pred_time:.5f}sample/s')

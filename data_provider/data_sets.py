@@ -3,9 +3,9 @@ from torch.utils.data import Dataset
 
 
 class DatasetCustom(Dataset):
-    def __init__(self, data, data_stamp, data_time, seq_len, pred_len, gap_len, scaler=None):
-        self.data = data
-        self.data_stamp = data_stamp
+    def __init__(self, data, data_stamp, data_time, seq_len, pred_len, gap_len, scalers=None):
+        self.data = data.astype(np.float32)
+        self.data_stamp = data_stamp.astype(np.float32)
         self.data_time = data_time
         self.return_time = False
 
@@ -13,7 +13,7 @@ class DatasetCustom(Dataset):
         self.pred_len = pred_len
         self.seq_len = seq_len
 
-        self.scaler = scaler
+        self.scalers = scalers
 
     def __getitem__(self, index):
         s_begin = index

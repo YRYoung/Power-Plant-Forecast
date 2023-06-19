@@ -9,10 +9,10 @@ from utils.timefeatures import time_features
 
 
 def custom_data_provider(args):
-    data, data_stamp, data_time, scaler = csv_loader(file_path=os.path.join(args.root_path, args.data_path),
-                                                     scale=True, freq=args.freq)
+    data, data_stamp, data_time, scalers = csv_loader(file_path=args.data_path,
+                                                      scale=True, freq=args.freq)
     full_set = DatasetCustom(
-        data=data, data_stamp=data_stamp, data_time=data_time, scaler=scaler,
+        data=data, data_stamp=data_stamp, data_time=data_time, scalers=scalers,
         seq_len=args.seq_len, pred_len=args.pred_len, gap_len=args.gap_len
     )
     type_map = {'train': 0, 'val': 1, 'test': 2}
@@ -44,11 +44,13 @@ def csv_loader(file_path, scale, freq):
 
     data = df_raw.values
     if scale:
-        scaler = StandardScaler()
-        scaler.fit(data)
-        data = scaler.transform(data)
+        scalers = [StandardScaler(), StandardScaler()]
+        scalers[0].fit(data[:, :3])
+        scalers[1].fit(data[:, -1:])
+        data = np.hstack([scalers[0].transform(data[:, :3]), scalers[1].transform(data[:, -1:])])
     else:
-        scaler = None
+        scalers = None
+
     data_stamp = time_features(df_raw.index, freq=freq).transpose(1, 0)
 
-    return data, data_stamp, df_raw.index, scaler
+    return data, data_stamp, df_raw.index, scalers

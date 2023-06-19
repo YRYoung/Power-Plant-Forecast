@@ -40,7 +40,8 @@ if __name__ == '__main__':
     parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
     parser.add_argument('--model', type=str, required=False, default='TimesNet',
                         help='model name, options: [TimesNet]')
-    parser.add_argument('--tags', type=list, default=[], required=False, help='tags for this training session')
+    parser.add_argument('--tags', type=str, default=None, required=False, help='tags for this training session')
+    parser.add_argument('--neptune_id', type=str, default=None, required=False, help='tags for this training session')
 
     # data
     # parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset name')
@@ -82,17 +83,17 @@ if __name__ == '__main__':
     # optimization
     parser.add_argument('--num_workers', type=int, default=2, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
-    parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
+    parser.add_argument('--train_epochs', type=int, default=50, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
     # parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='MSE', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
-    # parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
+    parser.add_argument('--use_amp', type=bool, help='use automatic mixed precision training', default=False)
 
     # GPU
-    # parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
+    parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
     # parser.add_argument('--gpu', type=int, default=0, help='gpu')
     # parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
     # parser.add_argument('--devices', type=str, default='0,1,2,3', help='device ids of multile gpus')

@@ -33,8 +33,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TimesNet')
 
     # basic config
-    parser.add_argument('--task_name', type=str, required=True, default='long_term_forecast',
-                        help='task name, options:[long_term_forecast, power_forecast]')
 
     parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
     parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
@@ -104,15 +102,12 @@ if __name__ == '__main__':
     parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
     args = parser.parse_args()
-    args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
-    if args.use_gpu and args.use_multi_gpu:
-        args.devices = args.devices.replace(' ', '')
-        device_ids = args.devices.split(',')
-        args.device_ids = [int(id_) for id_ in device_ids]
-        args.gpu = args.device_ids[0]
+    args.use_gpu = True if torch.cuda.is_available() and args.use_gpu and args.is_training else False
 
-    Exp = ExpLongTermForecast if args.task_name == 'long_term_forecast' else ExpPowerForecast
+    args.use_amp = args.use_gpu and args.use_amp
+
+    Exp = ExpPowerForecast
 
     if args.is_training:
         for ii in range(args.itr):

@@ -7,11 +7,12 @@ import pandas
 import torch
 import torch.nn as nn
 from torch import optim
+from tqdm import tqdm
 
 from data_provider.data_factory import custom_data_provider
 from models import TimesNet
 from utils.metrics import metric
-from utils.tools import EarlyStopping, adjust_learning_rate, plot_test, translate_seconds
+from utils.tools import EarlyStopping, plot_test, translate_seconds
 
 
 class ExpPowerForecast():
@@ -102,7 +103,7 @@ class ExpPowerForecast():
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
-            prefix = f'Epoch: {epoch} | \t'
+            prefix = f'Epoch: {epoch} | '
             num_batches = len(train_loader)
             train_loss = np.zeros(num_batches)
 
@@ -133,7 +134,7 @@ class ExpPowerForecast():
                     if (i + 1) % 100 == 0:
                         speed = (time.time() - time_now) / iter_count
                         print(prefix +
-                              f"batch: {i + 1}/{num_batches}, loss: {loss.item() :.5f} | {speed:.4f}s/batch")
+                              f"\tbatch: {i + 1}/{num_batches}, loss: {loss.item() :.5f} | {speed:.4f}s/batch")
                         iter_count = 0
                         time_now = time.time()
 
@@ -159,8 +160,6 @@ class ExpPowerForecast():
             if self.early_stopping.stop:
                 print(prefix + "Early stopping")
                 break
-
-            adjust_learning_rate(model_optim, epoch + 1, self.args)
 
         checkpoint = torch.load(self.best_model_path, map_location=self.device)
         self.model.load_state_dict(checkpoint['model'])

@@ -13,7 +13,6 @@ def translate_seconds(seconds):
 
 
 def adjust_learning_rate(optimizer, epoch, args):
-    # lr = args.learning_rate * (0.2 ** (epoch // 2))
     if args.lradj == 'type1':
         lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 1))}
     elif args.lradj == 'type2':
@@ -41,7 +40,9 @@ class EarlyStopping:
 
     def __call__(self, val_loss, model, prefix):
 
-        if val_loss > self.val_loss_min + self.tolerance:
+        if np.isnan(val_loss):
+            self.stop = True
+        elif val_loss > self.val_loss_min + self.tolerance:
             self.counter += 1
             print(prefix + f'EarlyStopping counter: {self.counter} out of {self.patience}')
             if self.counter >= self.patience:

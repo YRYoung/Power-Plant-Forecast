@@ -88,7 +88,6 @@ class Model(nn.Module):
         self.layer_norm = nn.LayerNorm(settings.d_model)
 
         full_len = self.pred_len + self.seq_len
-        # self.predict_linear = nn.Linear(self.seq_len, full_len)
 
         num_concat = 2
         self.concat_block = nn.ModuleList([nn.Linear(full_len, full_len) for _ in range(num_concat)])
@@ -113,11 +112,9 @@ class Model(nn.Module):
             enc_out = linear(enc_out)
         enc_out = enc_out.permute(0, 2, 1)
 
-        # x_enc_out = self.predict_linear(x_enc_out.permute(0, 2, 1)).permute(0, 2, 1)  # align temporal dimension
-
         # TimesNet
-        for i in range(self.layer):
-            enc_out = self.layer_norm(self.model[i](enc_out))
+        for block in self.time_blocks:
+            enc_out = self.layer_norm(block(enc_out))
 
         dec_out = self.projection(enc_out)
 

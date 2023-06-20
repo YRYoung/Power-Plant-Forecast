@@ -11,9 +11,8 @@ warnings.filterwarnings('ignore')
 
 
 def get_session_id(args):
-    session = '{}@iter{}_seq{}_gap{}_pred{}_dm{}_el{}_df{}'.format(
+    session = '{}@iter{}_dm{}_el{}_df{}'.format(
         args.model_id, ii,
-        args.seq_len, args.gap_len, args.pred_len,
         args.d_model,
         args.e_layers,
         args.d_ff,

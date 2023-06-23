@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -8,8 +10,35 @@ from utils.timefeatures import time_features
 
 
 def custom_data_provider(args):
-    data, data_stamp, data_time, scalers = csv_loader(file_path=args.data_path,
-                                                      scale=True, freq=args.freq)
+    """
+    Provide custom data for training, validation, testing, or final evaluation.
+
+    Parameters:
+    - args (object): Arguments object containing the following attributes:
+        - trained (bool): Whether the model is trained or not.
+        - result_path (str): Path to the result directory.
+        - data_path (str): Path to the data CSV file.
+        - scale (bool): Whether to perform feature scaling or not.
+        - freq (str): Frequency of the time features.
+        - debug (bool): Whether to enable debug mode or not.
+        - seq_len (int): Length of the input sequence.
+        - pred_len (int): Length of the prediction sequence.
+        - gap_len (int): Length of the gap between input and prediction sequences.
+        - batch_size (int): Batch size for data loading.
+        - num_workers (int): Number of worker processes for data loading.
+
+    Returns:
+    - provide (function): A function that takes a flag ('train', 'val', 'test', 'final') and returns a tuple
+      containing the dataset and data loader for the corresponding data split.
+    """
+
+    if args.trained:
+        with open(f'{args.result_path}/scalers.pkl', 'rb') as f:
+            scalers = pickle.load(f)
+    else:
+        scalers = None
+    data, data_stamp, data_time, scalers = csv_loader(file_path=args.data_path, scale=True,
+                                                      freq=args.freq, debug=args.debug, scalers=scalers)
     full_set = DatasetCustom(
         data=data, data_stamp=data_stamp, data_time=data_time, scalers=scalers,
         seq_len=args.seq_len, pred_len=args.pred_len, gap_len=args.gap_len
@@ -51,10 +80,10 @@ def csv_loader(file_path, scale, freq):
 
     data = df_raw.values
     if scale:
-        scalers = [StandardScaler(), StandardScaler()]
-        scalers[0].fit(data[:, :3])
+        scalers = scalers or [StandardScaler(), StandardScaler()]
+        scalers[0].fit(data[:, :-1])
         scalers[1].fit(data[:, -1:])
-        data = np.hstack([scalers[0].transform(data[:, :3]), scalers[1].transform(data[:, -1:])])
+        data = np.hstack([scalers[0].transform(data[:, :-1]), scalers[1].transform(data[:, -1:])])
     else:
         scalers = None
 

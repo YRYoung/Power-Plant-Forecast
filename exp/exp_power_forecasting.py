@@ -19,14 +19,12 @@ class ExpPowerForecast():
     def __init__(self, args):
         self.args = args
         self.writer = None
-        self.provider = custom_data_provider(self.args)
 
         device_name = 'cuda' if args.use_gpu else 'cpu'
         self.device = torch.device(device_name)
         self.model = TimesNet.Model(self.args).float()
 
         path = os.path.join(self.args.checkpoints, self.args.session_id)
-
         os.makedirs(path, exist_ok=True)
         self.args.result_path = './results/' + self.args.session_id + '/'
         os.makedirs(self.args.result_path, exist_ok=True)
@@ -48,8 +46,7 @@ class ExpPowerForecast():
 
         self.early_stopping = EarlyStopping(save_path=self.best_model_path, val_loss_min=val_loss,
                                             patience=self.args.patience, verbose=True)
-
-        self.model.to(self.device)
+        self.provider = custom_data_provider(self.args)
 
     def _get_data(self, flag):
         returns = {}
@@ -188,6 +185,7 @@ class ExpPowerForecast():
 
         self.device = torch.device('cpu')
         self.model = self.model.to(self.device)
+        print('Testing on cpu')
 
         test_data, test_loader = self._get_data(flag='final')
         test_data.dataset.return_time = True

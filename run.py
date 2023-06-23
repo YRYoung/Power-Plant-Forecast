@@ -99,16 +99,17 @@ if __name__ == '__main__':
 
     Exp = ExpPowerForecast
 
+    print_len = 15
     if args.is_training:
         for ii in range(args.itr):
             # setting record of experiments
             args.session_id = get_session_id(args)
 
             exp = Exp(args)  # set experiments
-            print('>' * 10 + f'training : {args.session_id}' + '>' * 10)
+            print('>' * print_len + f'training : {args.session_id}' + '>' * print_len)
             exp.train()
 
-            print('>' * 10 + f'testing : {args.session_id}' + '>' * 10)
+            print('>' * print_len + f'testing : {args.session_id}' + '>' * print_len)
             exp.test()
             torch.cuda.empty_cache()
     else:
@@ -116,6 +117,6 @@ if __name__ == '__main__':
         args.session_id = get_session_id(args)
 
         exp = Exp(args)  # set experiments
-        print('>' * 10 + f'testing : {args.session_id}' + '>' * 10)
+        print('>' * print_len + f'testing : {args.session_id}' + '>' * print_len)
         exp.test(test_only=True)
         torch.cuda.empty_cache()

@@ -56,7 +56,7 @@ def custom_data_provider(args):
         if flag == 'final':
             data_loader = DataLoader(
                 dataset,
-                batch_size=32,
+                batch_size=64,
                 drop_last=True)
         else:
             data_loader = DataLoader(

@@ -28,16 +28,23 @@ class ExpPowerForecast():
         path = os.path.join(self.args.checkpoints, self.args.session_id)
 
         os.makedirs(path, exist_ok=True)
+        self.args.result_path = './results/' + self.args.session_id + '/'
+        os.makedirs(self.args.result_path, exist_ok=True)
+        args.trained = len(os.listdir(path))
 
-        self.best_model_path = os.path.join(path, 'checkpoint.pth')
-        trained = os.path.exists(self.best_model_path)
+        self.best_model_path = os.path.join(path, f'checkpoint_{args.trained}.pth')
+        previous_checkpoint = f'checkpoint_{args.trained - 1}.pth'
+
         val_loss = np.Inf
-        print(f'{"Trained" if trained else "New"} model loaded on {device_name}')
-        if trained:
-            checkpoint = torch.load(self.best_model_path, map_location=self.device)
+        print(f'{"Trained" if args.trained else "New"} model loaded on {device_name}')
+        if args.trained:
+            checkpoint = torch.load(os.path.join(path, previous_checkpoint), map_location=self.device)
             self.model.load_state_dict(checkpoint['model'])
-            val_loss = checkpoint['val_loss']
-            print(f'Previous minimum val_loss: {val_loss:.6f}')
+            if args.load_min_loss:
+                val_loss = checkpoint['val_loss']
+            print(f'Previous checkpoint: {previous_checkpoint} | minimum val_loss: {val_loss:.6f}')
+
+        self.model.to(self.device)
 
         self.early_stopping = EarlyStopping(save_path=self.best_model_path, val_loss_min=val_loss,
                                             patience=self.args.patience, verbose=True)

@@ -3,6 +3,8 @@ import math
 import torch
 import torch.nn as nn
 
+from utils.timefeatures import freq_map
+
 
 class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, max_len=5000):
@@ -66,8 +68,7 @@ class TimeFeatureEmbedding(nn.Module):
     def __init__(self, d_model, freq='h'):
         super(TimeFeatureEmbedding, self).__init__()
 
-        freq_map = {'h': 4, 't': 5, 's': 6,
-                    'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
+
         d_inp = freq_map[freq]
         self.embed = nn.Linear(d_inp, d_model, bias=False)
 
@@ -76,18 +77,17 @@ class TimeFeatureEmbedding(nn.Module):
 
 
 class DataEmbedding(nn.Module):
-    def __init__(self, c_in, d_model, freq='h', dropout=0.1):
+    def __init__(self, c_in, d_model, freq='h', dropout=0.1, position_embedding=None, temporal_embedding=None):
         super(DataEmbedding, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
-        self.position_embedding = PositionalEmbedding(d_model=d_model)
-        self.temporal_embedding = TimeFeatureEmbedding(d_model=d_model, freq=freq)
+        self.position_embedding = position_embedding or PositionalEmbedding(d_model=d_model)
+        self.temporal_embedding = temporal_embedding or TimeFeatureEmbedding(d_model=d_model, freq=freq)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):
         if x_mark is None:
             x = self.value_embedding(x) + self.position_embedding(x)
         else:
-            x = self.value_embedding(
-                x) + self.temporal_embedding(x_mark) + self.position_embedding(x)
+            x = self.value_embedding(x) + self.temporal_embedding(x_mark) + self.position_embedding(x)
         return self.dropout(x)

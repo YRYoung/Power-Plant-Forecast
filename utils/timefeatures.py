@@ -19,7 +19,6 @@ import pandas as pd
 from pandas.tseries import offsets
 from pandas.tseries.frequencies import to_offset
 
-
 class TimeFeature:
     def __init__(self):
         pass
@@ -87,6 +86,17 @@ class WeekOfYear(TimeFeature):
         return (index.isocalendar().week - 1) / 52.0 - 0.5
 
 
+class Yearafter2010(TimeFeature):
+    """Week of year encoded as value between [-0.5, 0.5]"""
+
+    def __call__(self, index: pd.DatetimeIndex) -> np.ndarray:
+        return index.year - 2010
+
+
+freq_map = {'h': 4, 't': 5, 's': 6,
+            'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
+
+
 def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
     """
     Returns a list of time features that will be appropriate for the given frequency string.
@@ -110,6 +120,7 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
             DayOfWeek,
             DayOfMonth,
             DayOfYear,
+            # Yearafter2000,
         ],
         offsets.Second: [
             SecondOfMinute,
@@ -144,5 +155,5 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
     raise RuntimeError(supported_freq_msg)
 
 
-def time_features(dates, freq='h'):
+def time_features(dates, freq):
     return np.vstack([feat(dates) for feat in time_features_from_frequency_str(freq)])

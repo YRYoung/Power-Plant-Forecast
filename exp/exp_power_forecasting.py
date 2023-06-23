@@ -1,18 +1,23 @@
+import json
 import os
+import pickle
 import time
 
 import neptune
 import numpy as np
 import pandas
+import pandas as pd
 import torch
 import torch.nn as nn
+import yaml
 from torch import optim
 from tqdm import tqdm
 
 from data_provider.data_factory import custom_data_provider
 from models import TimesNet
 from utils.metrics import metric
-from utils.tools import EarlyStopping, plot_test, translate_seconds
+from utils.timefeatures import time_features
+from utils.tools import EarlyStopping, plot_test, translate_seconds, EmptyWriter
 
 
 class ExpPowerForecast():
@@ -65,14 +70,15 @@ class ExpPowerForecast():
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, _) in enumerate(vali_loader):
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 if self.args.use_gpu:
                     batch_x = batch_x.cuda(non_blocking=True)
                     batch_y = batch_y.cuda(non_blocking=True)
                     batch_x_mark = batch_x_mark.cuda(non_blocking=True)
+                    batch_y_mark = batch_y_mark.cuda(non_blocking=True)
 
                 with torch.cuda.amp.autocast(self.args.use_amp):
-                    outputs = self.model(batch_x, batch_x_mark)
+                    outputs = self.model(batch_x, batch_x_mark, batch_y[..., :-1], batch_y_mark)
 
                     outputs = outputs[:, :, -1:]
                     batch_y = batch_y[:, :, -1:]
@@ -100,6 +106,7 @@ class ExpPowerForecast():
             self.writer['sys/tags'].add(self.args.tags)
         self.writer['args'] = self.args
 
+        time_now = time.time()
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             prefix = f'Epoch: {epoch} | '
@@ -109,13 +116,14 @@ class ExpPowerForecast():
             self.model.train()
             epoch_time = time.time()
 
-            for i, (batch_x, batch_y, batch_x_mark, _) in enumerate(train_loader):
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
                 if self.args.use_gpu:
                     batch_x = batch_x.cuda(non_blocking=True)
                     batch_y = batch_y.cuda(non_blocking=True)
                     batch_x_mark = batch_x_mark.cuda(non_blocking=True)
+                    batch_y_mark = batch_y_mark.cuda(non_blocking=True)
 
                 with torch.cuda.amp.autocast(self.args.use_amp):
 
@@ -196,17 +204,14 @@ class ExpPowerForecast():
         preds = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
         trues = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
 
-        result_path = './results/' + self.args.session_id + '/'
-        if not os.path.exists(result_path):
-            os.makedirs(result_path)
-
         self.model.eval()
         pred_time = 0
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, _, indices_x, indices_y) in tqdm(enumerate(test_loader),
-                                                                                     total=num_batches, desc='Test'):
+            for i, (batch_x, batch_y,
+                    batch_x_mark, batch_y_mark,
+                    indices_x, indices_y) in tqdm(enumerate(test_loader), total=num_batches, desc='Test', unit='batch'):
                 t_start = time.time()
-                outputs = self.model(batch_x, batch_x_mark)
+                outputs = self.model(batch_x, batch_x_mark, batch_y[..., :-1], batch_y_mark)
                 pred_time += time.time() - t_start
                 outputs = outputs[:, :, -1:].numpy().squeeze()
                 batch_y = batch_y[:, :, -1:].numpy().squeeze()
@@ -218,9 +223,9 @@ class ExpPowerForecast():
                     result_df.iloc[indices_y[0][i].item():indices_y[1][i].item(), 1] = outputs[i, :]
 
         pred_time /= num_batches
-        print(f'Average Interference speed: {pred_time:.5f}sample/s')
-        if not test_only:
-            self.writer['pred_time'] = pred_time
+        print(f'Average Interference speed: {pred_time:.5f}sample/s\n')
+
+        self.writer['pred_time'] = pred_time
         result_df_original = result_df.copy(deep=True)
 
         result_df_original.iloc[:, 0] = test_data.dataset.scalers[1].inverse_transform(result_df_original.iloc[:, [0]])

@@ -11,16 +11,7 @@ warnings.filterwarnings('ignore')
 
 
 def get_session_id(args):
-    session = '{}@iter{}_dm{}_el{}_df{}'.format(
-        args.model_id, ii,
-        args.d_model,
-        args.e_layers,
-        args.d_ff,
-    )
-    args.tags = args.tags.split(',')
-    if args.tags:
-        session += '_(' + '_'.join(args.tags) + ')'
-    return session
+    return 'model_{}_run_{}@iter{}'.format(args.model_id, args.run_id, ii)
 
 
 if __name__ == '__main__':

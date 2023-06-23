@@ -73,10 +73,29 @@ def custom_data_provider(args):
     return lambda flag: provide(flag)
 
 
-def csv_loader(file_path, scale, freq):
+def csv_loader(file_path, scale, freq, debug, scalers=None):
+    """
+    Load data from a CSV file and preprocess it.
+
+    Parameters:
+    - file_path (str): Path to the CSV file.
+    - scale (bool): Whether to perform feature scaling or not.
+    - freq (str): Frequency of the time features.
+    - debug (bool): Whether to enable debug mode(using only a mini subset to train).
+    - scalers (list, optional): List of pre-initialized scalers for feature scaling.
+
+    Returns:
+    - data (numpy.ndarray): Preprocessed data.
+    - data_stamp (numpy.ndarray): Time features.
+    - index (pandas.DatetimeIndex): Index of the data.
+    - scalers (list or None): List of scalers used for feature scaling.
+    """
     df_raw = pd.read_csv(file_path, index_col=0)
     df_raw.index = pd.to_datetime(df_raw.index)
-    df_raw = df_raw.loc['2020-03-01':, :]
+    # '2020-03-01':
+    df_raw = df_raw.loc[:, ['B', 'target']]
+    if debug:
+        df_raw = df_raw.iloc[-500:, :]
 
     data = df_raw.values
     if scale:

@@ -119,9 +119,8 @@ class Model(nn.Module):
         dec_out = self.projection(enc_out)
 
         # De-Normalization from Non-stationary Transformer
-        f_dim = -1 if self.settings.features == 'MS' and self.settings.enc_in != self.settings.c_out else 0
-        dec_out = dec_out * (stdev[:, 0, f_dim:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
-        dec_out = dec_out + (means[:, 0, f_dim:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
+        dec_out = dec_out * (stdev[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
+        dec_out = dec_out + (means[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
         return dec_out
 
     def forward(self, x_enc, x_mark_enc, y_enc, y_mark_enc):

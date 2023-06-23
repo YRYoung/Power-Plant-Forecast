@@ -74,9 +74,8 @@ class ExpPowerForecast():
                 with torch.cuda.amp.autocast(self.args.use_amp):
                     outputs = self.model(batch_x, batch_x_mark)
 
-                    f_dim = -1 if self.args.features == 'MS' else 0
-                    outputs = outputs[:, :, f_dim:]
-                    batch_y = batch_y[:, :, f_dim:]
+                    outputs = outputs[:, :, -1:]
+                    batch_y = batch_y[:, :, -1:]
 
                     loss = criterion(outputs, batch_y)
 
@@ -120,10 +119,9 @@ class ExpPowerForecast():
 
                 with torch.cuda.amp.autocast(self.args.use_amp):
 
-                    outputs = self.model(batch_x, batch_x_mark)
-                    f_dim = -1 if self.args.features == 'MS' else 0
-                    outputs = outputs[:, :, f_dim:]
-                    batch_y = batch_y[:, :, f_dim:]
+                    outputs = self.model(batch_x, batch_x_mark, batch_y[..., :-1], batch_y_mark)
+                    outputs = outputs[:, :, -1:]
+                    batch_y = batch_y[:, :, -1:]
                     loss = criterion(outputs, batch_y)
 
                 train_loss[i] = loss.item()
@@ -210,9 +208,8 @@ class ExpPowerForecast():
                 t_start = time.time()
                 outputs = self.model(batch_x, batch_x_mark)
                 pred_time += time.time() - t_start
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:].numpy().squeeze()
-                batch_y = batch_y[:, :, f_dim:].numpy().squeeze()
+                outputs = outputs[:, :, -1:].numpy().squeeze()
+                batch_y = batch_y[:, :, -1:].numpy().squeeze()
 
                 preds[i, :] = outputs
                 trues[i, :] = batch_y

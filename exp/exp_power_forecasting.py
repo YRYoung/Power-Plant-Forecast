@@ -92,11 +92,7 @@ class ExpPowerForecast():
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
-        self.writer = neptune.init_run(
-            with_id=self.args.neptune_id,
-            project="y.runyang/PowerForecast",
-            api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJhMTk3Y2ZmZi05NDA1LTQ0OWEtODdhZi1lMjJiNWExYzdkMmYifQ==",
-        )  # your credentials
+        self._init_writer()
         if self.args.tags:
             self.writer['sys/tags'].add(self.args.tags)
         self.writer['args'] = self.args
@@ -166,8 +162,23 @@ class ExpPowerForecast():
 
         return self.model
 
+    def _init_writer(self):
+        with open("neptune_config.yaml", 'r') as stream:
+            config = yaml.safe_load(stream)
+
+        self.writer = neptune.init_run(
+            with_id=self.args.neptune_id,
+            project=config['project'],
+            api_token=config['api_token']
+        ) if self.args.neptune else EmptyWriter()
+
     def test(self, test_only=False):
-        print('Testing interference on cpu')
+
+        if test_only:
+            if self.args.neptune_id is None:
+                raise ValueError('Specify neptune id')
+            self._init_writer()
+
         self.device = torch.device('cpu')
         self.model = self.model.to(self.device)
 

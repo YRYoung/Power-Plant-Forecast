@@ -62,11 +62,22 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 
-class DotDict(dict):
-    """dot.notation access to dictionary attributes"""
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
+class EmptyWriter:
+    class EmptyList:
+        def __init__(self):
+            pass
+
+    def append(self, *args, **kwargs):
+        pass
+
+    def __init__(self):
+        self.empty_list = self.EmptyList()
+
+    def __getitem__(self, item):
+        return self.empty_list
+
+    def __setitem__(self, key, value):
+        pass
 
 
 def plot_test(result_df):

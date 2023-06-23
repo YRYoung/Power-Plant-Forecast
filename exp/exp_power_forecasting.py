@@ -226,23 +226,38 @@ class ExpPowerForecast():
         self.writer['pred_time'] = pred_time
         result_df_original = result_df.copy(deep=True)
 
-        result_df_original.iloc[:, 0] = test_data.dataset.scalers[1].inverse_transform(result_df_original.iloc[:, [0]])
-        result_df_original.iloc[:, 1] = test_data.dataset.scalers[1].inverse_transform(result_df_original.iloc[:, [1]])
+        de_standardize = test_data.dataset.scalers[1].inverse_transform
+        result_df_original.iloc[:, 0] = de_standardize(result_df_original.iloc[:, [0]])
+        result_df_original.iloc[:, 1] = de_standardize(result_df_original.iloc[:, [1]])
 
         figs = plot_test(result_df), plot_test(result_df_original)
         for i, fig in enumerate(figs):
-            if not test_only:
-                self.writer['result'].append(fig)
-            fig.savefig(os.path.join(result_path, f'result_{i}.pdf'))
+            self.writer['result'].append(fig)
+            fig.savefig(os.path.join(self.args.result_path, f'result_{i}.pdf'))
 
-        result = metric(preds, trues)
-        for name, d in zip(['mae', 'mse', 'rmse', 'mape', 'mspe'], result):
-            if not test_only:
-                self.writer[f'test/{name}'].append(d)
-            print(f'{name}: {d:.4f}')
+        result = dict()
+        preds = preds.reshape(-1, 1)
+        trues = trues.reshape(-1, 1)
+        self.writer['30minMSE'] = (
+                result_df_original.resample('30min').mean().dropna(inplace=False).diff(axis=1).iloc[:,
+                -1].values ** 2).mean()
 
-        np.save(result_path + 'metrics.npy', np.array([result]))
-        result_df_original.to_csv(os.path.join(result_path, f'result_df.csv'))
+        preds = de_standardize(preds)
+        trues = de_standardize(trues)
+        result['de_standardized'] = metric(preds, trues)
 
-        if not test_only:
-            self.writer.stop()
+        for k, dic in result.items():
+            print(k + ':')
+            for key, value in dic.items():
+                self.writer[f'{k}/{key}'] = value
+                print(f'{key}: {value:.4f}')
+
+        with open(f'{self.args.result_path}/accuracy.json', 'w', encoding='utf8') as json_file:
+            json.dump(result, json_file, ensure_ascii=False)
+
+        with open(f'{self.args.result_path}/scalers.pkl', 'wb') as f:
+            pickle.dump(test_data.dataset.scalers, f)
+
+        result_df_original.to_csv(os.path.join(self.args.result_path, 'result_df.csv'))
+
+        self.writer.stop()

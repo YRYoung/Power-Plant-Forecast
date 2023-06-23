@@ -96,8 +96,6 @@ class ExpPowerForecast():
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
 
-        time_now = time.time()
-
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
@@ -107,7 +105,7 @@ class ExpPowerForecast():
         self.writer['args'] = self.args
 
         time_now = time.time()
-        for epoch in range(self.args.train_epochs):
+        for epoch in range(self.args.max_epochs):
             iter_count = 0
             prefix = f'Epoch: {epoch} | '
             num_batches = len(train_loader)

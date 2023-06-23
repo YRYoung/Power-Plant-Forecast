@@ -23,11 +23,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TimesNet')
 
     # basic config
-
-    parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
-    parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
-    parser.add_argument('--model', type=str, required=False, default='TimesNet',
-                        help='model name, options: [TimesNet]')
+    parser.add_argument('--is_training', type=int, required=True, default=1,
+                        help='train or only test the model, default True (1)')
+    parser.add_argument('--model_id', type=str, required=True, help='model id')
+    parser.add_argument('--run_id', type=str, required=True, help='run id')
     parser.add_argument('--tags', type=str, default=None, required=False, help='tags for this training session')
     parser.add_argument('--neptune_id', type=str, default=None, required=False, help='tags for this training session')
 

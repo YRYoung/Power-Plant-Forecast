@@ -1,3 +1,5 @@
+import random
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -7,12 +9,35 @@ pic_id = 0
 
 
 def translate_seconds(seconds):
+    """
+    Translate seconds into a formatted string of hours, minutes, and seconds.
+
+    Args:
+        seconds: The number of seconds to be translated.
+
+    Returns:
+        A string in the format "HH:MM:SS" representing the translated time.
+
+    Examples:
+        >>> translate_seconds(3665)
+        '01:01:05'
+        >>> translate_seconds(7200)
+        '02:00:00'
+    """
     minutes, secs = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     return f"{hours:02.0f}:{minutes:02.0f}:{secs:02.0f}"
 
 
 def adjust_learning_rate(optimizer, epoch, args):
+    """ Adjusts the learning rate of the optimizer based on the given epoch and arguments.
+
+    Args:
+        optimizer (torch.optim.Optimizer): The optimizer for which the learning rate needs to be adjusted.
+        epoch (int): The current epoch.
+        args (argparse.Namespace): The command line arguments.
+
+    """
     if args.lradj == 'type1':
         lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 1))}
     elif args.lradj == 'type2':
@@ -28,6 +53,26 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 
 class EarlyStopping:
+    """Class for implementing early stopping during training.
+
+    Args:
+        save_path (str): The file path to save the model checkpoint.
+        patience (int, optional): The number of epochs to wait for improvement before stopping. Default is 7.
+        verbose (bool, optional): Whether to print messages during training. Default is False.
+        tolerance (float, optional): The minimum improvement required to reset the counter. Default is 0.
+        val_loss_min (float, optional): The initial minimum validation loss. Default is np.Inf.
+
+    Attributes:
+        save_path (str): The file path to save the model checkpoint.
+        patience (int): The number of epochs to wait for improvement before stopping.
+        verbose (bool): Whether to print messages during training.
+        counter (int): The counter to keep track of the number of epochs without improvement.
+        stop (bool): Whether to stop the training process.
+        val_loss_min (float): The minimum validation loss achieved so far.
+        tolerance (float): The minimum improvement required to reset the counter.
+
+    """
+
     def __init__(self, save_path, patience=7, verbose=False, tolerance=0, val_loss_min=np.Inf):
         self.save_path = save_path
         self.patience = patience
@@ -39,7 +84,14 @@ class EarlyStopping:
         self.tolerance = tolerance
 
     def __call__(self, val_loss, model, prefix):
+        """Method to perform early stopping based on validation loss.
 
+       Args:
+           val_loss (float): The current validation loss.
+           model (torch.nn.Module): The model being trained.
+           prefix (str): The prefix string to print in the early stopping message.
+
+       """
         if np.isnan(val_loss):
             self.stop = True
         elif val_loss > self.val_loss_min + self.tolerance:
@@ -53,6 +105,14 @@ class EarlyStopping:
             self.counter = 0
 
     def save_checkpoint(self, val_loss, model, prefix):
+        """Method to save the model checkpoint if the validation loss improves.
+
+        Args:
+            val_loss (float): The current validation loss.
+            model (torch.nn.Module): The model being trained.
+            prefix (str): The prefix string to print in the save checkpoint message.
+
+        """
         if self.verbose:
             print(prefix + f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...')
         torch.save({
@@ -63,6 +123,7 @@ class EarlyStopping:
 
 
 class EmptyWriter:
+
     class EmptyList:
         def __init__(self):
             pass
@@ -81,6 +142,15 @@ class EmptyWriter:
 
 
 def plot_test(result_df):
+    """Plots the test results using a line plot.
+
+    Args:
+        result_df (pandas.DataFrame): The DataFrame containing the test results.
+
+    Returns:
+        matplotlib.figure.Figure: The figure object containing the line plot.
+
+    """
     global pic_id
     fig = plt.figure(pic_id, figsize=(20, 4))
     ax = plt.gca()
@@ -89,29 +159,13 @@ def plot_test(result_df):
     return fig
 
 
-def adjustment(gt, pred):
-    anomaly_state = False
-    for i in range(len(gt)):
-        if gt[i] == 1 and pred[i] == 1 and not anomaly_state:
-            anomaly_state = True
-            for j in range(i, 0, -1):
-                if gt[j] == 0:
-                    break
-                else:
-                    if pred[j] == 0:
-                        pred[j] = 1
-            for j in range(i, len(gt)):
-                if gt[j] == 0:
-                    break
-                else:
-                    if pred[j] == 0:
-                        pred[j] = 1
-        elif gt[i] == 0:
-            anomaly_state = False
-        if anomaly_state:
-            pred[i] = 1
-    return gt, pred
+def set_seed(seed):
+    """Sets the random seed for reproducibility.
 
+    Args:
+        seed (int): The seed value to set for random number generators.
 
-def cal_accuracy(y_pred, y_true):
-    return np.mean(y_pred == y_true)
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)

@@ -20,7 +20,23 @@ from utils.timefeatures import time_features
 from utils.tools import EarlyStopping, plot_test, translate_seconds, EmptyWriter
 
 
-class ExpPowerForecast():
+class ExpPowerForecast:
+    """Experiment class for power forecasting.
+    Args:
+        args (argparse.Namespace): Arguments dictionary.
+
+    Attributes:
+        args (argparse.Namespace): Arguments dictionary.
+        writer (neptune.experiments.Experiment): Neptune data writer.
+        device (torch.device): Device to use for training.
+        model (torch.nn.Module): Model to train/test.
+        criterion (torch.nn.Module): Loss function.
+        best_model_path (str): Path to the best model checkpoint.
+        early_stopping (utils.tools.EarlyStopping): Early stopping object.
+        provider (function): Data provider function.
+
+    """
+
     def __init__(self, args):
         self.args = args
         self.writer = None
@@ -62,10 +78,15 @@ class ExpPowerForecast():
     def _select_optimizer(self):
         return optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
-    def _select_criterion(self):
-        return nn.MSELoss()
+    def vali(self, vali_loader) -> float:
+        """Perform validation on the model.
 
-    def vali(self, vali_loader, criterion):
+        Args:
+            vali_loader (DataLoader): Validation data loader.
+
+        Returns:
+            float: The validation loss.
+        """
         total_loss = np.zeros(len(vali_loader))
 
         self.model.eval()
@@ -91,13 +112,18 @@ class ExpPowerForecast():
         return total_loss
 
     def train(self):
+        """Train the model.
+
+        Returns:
+            The trained model.
+        """
 
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
 
         model_optim = self._select_optimizer()
-        criterion = self._select_criterion()
+        self.criterion = nn.MSELoss()
 
         self._init_writer()
         if self.args.tags:
@@ -128,7 +154,7 @@ class ExpPowerForecast():
                     outputs = self.model(batch_x, batch_x_mark, batch_y[..., :-1], batch_y_mark)
                     outputs = outputs[:, :, -1:]
                     batch_y = batch_y[:, :, -1:]
-                    loss = criterion(outputs, batch_y)
+                    loss = self.criterion(outputs, batch_y)
 
                 train_loss[i] = loss.item()
 
@@ -149,8 +175,8 @@ class ExpPowerForecast():
 
             print(prefix + 'validating...', end='')
             t = time.time()
-            vali_loss = self.vali(vali_loader, criterion)
-            test_loss = self.vali(test_loader, criterion)
+            vali_loss = self.vali(vali_loader)
+            test_loss = self.vali(test_loader)
             print(f' | {translate_seconds(time.time() - t)}')
 
             self.writer['train/loss'].append(train_loss)
@@ -181,6 +207,17 @@ class ExpPowerForecast():
         ) if self.args.neptune else EmptyWriter()
 
     def test(self, test_only=False):
+        """Test the model.
+
+        Args:
+            test_only: Whether to only test the model without training.
+
+        Raises:
+            ValueError: If neptune id is not specified.
+
+        Returns:
+            The trained model.
+        """
 
         if test_only:
             if self.args.neptune_id is None:

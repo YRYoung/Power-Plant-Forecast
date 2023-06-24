@@ -87,7 +87,7 @@ class WeekOfYear(TimeFeature):
 
 
 class Yearafter2010(TimeFeature):
-    """Week of year encoded as value between [-0.5, 0.5]"""
+    """Year number - 2010"""
 
     def __call__(self, index: pd.DatetimeIndex) -> np.ndarray:
         return index.year - 2010
@@ -98,12 +98,8 @@ freq_map = {'h': 4, 't': 5, 's': 6,
 
 
 def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
-    """
-    Returns a list of time features that will be appropriate for the given frequency string.
-    Parameters
-    ----------
-    freq_str
-        Frequency string of the form [multiple][granularity] such as "12H", "5min", "1D" etc.
+    """Returns a list of time features that will be appropriate for the given frequency string.
+    Args: freq_str (str): Frequency string of the form [multiple][granularity] such as "12H", "5min", "1D" etc.
     """
 
     features_by_offsets = {

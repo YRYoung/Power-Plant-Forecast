@@ -10,27 +10,18 @@ from utils.timefeatures import time_features
 
 
 def custom_data_provider(args):
-    """
-    Provide custom data for training, validation, testing, or final evaluation.
+    """A custom data provider function.
 
-    Parameters:
-    - args (object): Arguments object containing the following attributes:
-        - trained (bool): Whether the model is trained or not.
-        - result_path (str): Path to the result directory.
-        - data_path (str): Path to the data CSV file.
-        - scale (bool): Whether to perform feature scaling or not.
-        - freq (str): Frequency of the time features.
-        - debug (bool): Whether to enable debug mode or not.
-        - seq_len (int): Length of the input sequence.
-        - pred_len (int): Length of the prediction sequence.
-        - gap_len (int): Length of the gap between input and prediction sequences.
-        - batch_size (int): Batch size for data loading.
-        - num_workers (int): Number of worker processes for data loading.
+    Args:
+        args (argparse.Namespace): The arguments dict.
 
     Returns:
-    - provide (function): A function that takes a flag ('train', 'val', 'test', 'final') and returns a tuple
-      containing the dataset and data loader for the corresponding data split.
-    """
+        function: A lambda function that provides the dataset and data loader, with a given flag.
+
+    Raises:
+        FileNotFoundError: If the file path specified in args.data_path does not exist.
+
+"""
 
     if args.trained:
         with open(f'{args.result_path}/scalers.pkl', 'rb') as f:
@@ -52,6 +43,15 @@ def custom_data_provider(args):
     allsets = random_split(full_set, [train_len, val_len, val_len])
 
     def provide(flag):
+        """Provide the dataset and data loader based on the flag.
+
+        Args:
+            flag (str): The flag indicating the type of dataset.
+
+        Returns:
+            tuple: A tuple containing the dataset and data loader.
+
+        """
         dataset = allsets[type_map[flag]]
         if flag == 'final':
             data_loader = DataLoader(
@@ -74,26 +74,25 @@ def custom_data_provider(args):
 
 
 def csv_loader(file_path, scale, freq, debug, scalers=None):
-    """
-    Load data from a CSV file and preprocess it.
+    """ Load data from a CSV file and preprocess it for further analysis.
 
     Parameters:
-    - file_path (str): Path to the CSV file.
-    - scale (bool): Whether to perform feature scaling or not.
-    - freq (str): Frequency of the time features.
-    - debug (bool): Whether to enable debug mode(using only a mini subset to train).
-    - scalers (list, optional): List of pre-initialized scalers for feature scaling.
+        file_path (str): The path to the CSV file.
+        scale (bool): Whether to scale the data or not.
+        freq (str): The frequency of the data timestamps.
+        debug (bool): Whether to run in debug mode or not.
+        scalers (list, optional): List of scalers to use for scaling the data. Defaults to None.
 
     Returns:
-    - data (numpy.ndarray): Preprocessed data.
-    - data_stamp (numpy.ndarray): Time features.
-    - index (pandas.DatetimeIndex): Index of the data.
-    - scalers (list or None): List of scalers used for feature scaling.
+        tuple: A tuple containing the preprocessed data, the timestamp data,
+        the index (date) of the original data, and the scalers used for scaling.
+
     """
+
     df_raw = pd.read_csv(file_path, index_col=0)
     df_raw.index = pd.to_datetime(df_raw.index)
     # '2020-03-01':
-    df_raw = df_raw.loc[:, ['B', 'target']]
+    df_raw = df_raw.loc['2020-03-01':, ['B', 'target']]
     if debug:
         df_raw = df_raw.iloc[-500:, :]
 

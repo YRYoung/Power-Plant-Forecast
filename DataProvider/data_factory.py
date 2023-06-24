@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, random_split
 
-from data_provider.data_sets import DatasetCustom
+from DataProvider.datasets import DatasetCustom
 from utils.timefeatures import time_features
 
 

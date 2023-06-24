@@ -5,7 +5,8 @@ import warnings
 import numpy as np
 import torch
 
-from exp.exp_power_forecasting import ExpPowerForecast
+from Experiment.ExpPowerForecasting import ExpPowerForecast
+from utils.tools import set_seed
 
 warnings.filterwarnings('ignore')
 

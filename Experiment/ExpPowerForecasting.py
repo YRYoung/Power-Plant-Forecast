@@ -13,7 +13,7 @@ import yaml
 from torch import optim
 from tqdm import tqdm
 
-from data_provider.data_factory import custom_data_provider
+from DataProvider.data_factory import custom_data_provider
 from models import TimesNet
 from utils.metrics import metric
 from utils.timefeatures import time_features

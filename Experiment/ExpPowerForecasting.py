@@ -21,6 +21,34 @@ from utils.timefeatures import time_features
 from utils.tools import EarlyStopping, plot_test, translate_seconds, EmptyWriter
 
 
+def inference(use_gpu=True, **kwargs):
+    """Runs the inference model for power forecasting.
+
+    Args:
+        use_gpu (bool, optional): Whether to use GPU for inference. Default is True.
+        **kwargs: Additional keyword arguments (e.g., model_id, run_id, etc.) to be passed as command line
+            arguments to initialize experiment.
+
+    Returns:
+        ExpPowerForecast: The instance of the power forecasting experiment.
+
+    """
+    parser = add_args()
+
+    args_list = []
+    for key, value in kwargs.items():
+        args_list += [f'--{key}', f'{value}']
+    args = parser.parse_args(args=args_list)
+    args.use_gpu = torch.cuda.is_available() and use_gpu
+    set_session_id(args)
+    exp = ExpPowerForecast(args)
+    exp.model.eval()
+    with open(f'{args.result_path}/scalers.pkl', 'rb') as f:
+        exp.scalers = pickle.load(f)
+
+    return exp
+
+
 class ExpPowerForecast:
     """Experiment class for power forecasting.
     Args:
@@ -319,3 +347,54 @@ class ExpPowerForecast:
         result_df_original.to_csv(os.path.join(self.args.test_path, 'result_df.csv'))
 
         self.writer.stop()
+
+    def predict(self, y_time: pd.DatetimeIndex, power_output: pd.DataFrame, temperature_df: pd.DataFrame):
+        """Performs prediction using the trained model.
+
+        Args:
+            y_time (pd.DatetimeIndex): The time indices for the prediction.
+            power_output (pd.DataFrame): The historical power output data, must be at least as long as seq_len.
+            temperature_df (pd.DataFrame): The temperature data, the most recent entry must be later than all
+            datetime in y_time.
+
+        Returns:
+            pd.Series: The predicted power output values.
+
+        """
+        assert len(y_time) % self.args.pred_len == 0, f'Length of y_time should be a multiple of {self.args.pred_len}'
+
+        pred_time = time.time()
+        power_output = power_output.iloc[-self.args.seq_len:, :]
+
+        # standardize
+        x_data = np.hstack(
+            [self.scalers[0].transform(temperature_df.loc[power_output.index, :].values),
+             self.scalers[1].transform(power_output.values)]).astype(np.float32)
+        y_data = self.scalers[0].transform(temperature_df.loc[y_time, :].values).astype(np.float32)
+
+        # generate time features
+        x_data_stamp = time_features(power_output.index, freq=self.args.freq).transpose(1, 0).astype(np.float32)
+        y_data_stamp = time_features(y_time, freq=self.args.freq).transpose(1, 0).astype(np.float32)
+
+        # turn input data into batches
+        y_data = y_data.reshape(-1, self.args.pred_len, y_data.shape[-1])
+        y_data_stamp = y_data_stamp.reshape(-1, self.args.pred_len, y_data_stamp.shape[-1])
+
+        x_data = np.expand_dims(x_data, axis=0).repeat(y_data.shape[0], axis=0)
+        x_data_stamp = np.expand_dims(x_data_stamp, axis=0).repeat(y_data.shape[0], axis=0)
+
+        # turn into torch tensors and move to device
+        x_data = torch.from_numpy(x_data).to(self.device)
+        y_data = torch.from_numpy(y_data).to(self.device)
+        x_data_stamp = torch.from_numpy(x_data_stamp).to(self.device)
+        y_data_stamp = torch.from_numpy(y_data_stamp).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(x_data, x_data_stamp, y_data, y_data_stamp)
+
+        outputs = self.scalers[1].inverse_transform(outputs[:, :, -1:].cpu().numpy().reshape(-1, 1))
+        result = pd.Series(index=y_time, data=outputs.flatten(), name='prediction')
+
+        print(f'predict time: {translate_seconds(time.time() - pred_time)}\n')
+
+        return result

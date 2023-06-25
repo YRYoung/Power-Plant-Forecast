@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 from DataProvider.data_factory import custom_data_provider
 from models import TimesNet
+from utils.cmd import set_session_id, add_args
 from utils.metrics import metric
 from utils.timefeatures import time_features
 from utils.tools import EarlyStopping, plot_test, translate_seconds, EmptyWriter
@@ -38,36 +39,53 @@ class ExpPowerForecast:
     """
 
     def __init__(self, args):
+
         self.args = args
         self.writer = None
+        self.scalers = None
 
         device_name = 'cuda' if args.use_gpu else 'cpu'
         self.device = torch.device(device_name)
+
+        self.args.enc_in = len(list(args.data_source)) + 1
+        self.args.c_out = 1
+
         self.model = TimesNet.Model(self.args).float()
 
-        path = os.path.join(self.args.checkpoints, self.args.session_id)
-        os.makedirs(path, exist_ok=True)
-        self.args.result_path = './results/' + self.args.session_id + '/'
-        os.makedirs(self.args.result_path, exist_ok=True)
-        args.trained = len(os.listdir(path))
+        self.best_model_path = self._set_path()
 
-        self.best_model_path = os.path.join(path, f'checkpoint_{args.trained}.pth')
-        previous_checkpoint = f'checkpoint_{args.trained - 1}.pth'
-
-        val_loss = np.Inf
-        print(f'{"Trained" if args.trained else "New"} model loaded on {device_name}')
-        if args.trained:
-            checkpoint = torch.load(os.path.join(path, previous_checkpoint), map_location=self.device)
-            self.model.load_state_dict(checkpoint['model'])
-            if args.load_min_loss:
-                val_loss = checkpoint['val_loss']
-            print(f'Previous checkpoint: {previous_checkpoint} | minimum val_loss: {val_loss:.6f}')
+        self.early_stopping = self._set_early_stopping(device_name)
 
         self.model.to(self.device)
 
-        self.early_stopping = EarlyStopping(save_path=self.best_model_path, val_loss_min=val_loss,
-                                            patience=self.args.patience, verbose=True)
         self.provider = custom_data_provider(self.args)
+
+        self.criterion = nn.MSELoss()
+
+    def _set_early_stopping(self, device_name):
+        val_loss = np.Inf
+        args = self.args
+        print(f'{"Trained" if args.trained else "New"} model loaded on {device_name}')
+        if args.trained:
+            previous_checkpoint = f'checkpoint_{args.trained - 1}.pth'
+            checkpoint = torch.load(self.args.checkpoint_dir + previous_checkpoint, map_location=self.device)
+            self.model.load_state_dict(checkpoint['model'])
+            info = f'Previous checkpoint: {previous_checkpoint}'
+            if args.load_min_loss:
+                val_loss = checkpoint['val_loss']
+                info += f' | minimum val_loss: {val_loss:.6f}'
+            print(info)
+        return EarlyStopping(save_path=self.best_model_path, val_loss_min=val_loss,
+                             patience=args.patience, verbose=True)
+
+    def _set_path(self):
+        self.args.result_path = f'./results/{self.args.session_id}/'
+        self.args.checkpoint_dir = self.args.result_path + 'checkpoints/'
+        self.args.test_path = self.args.result_path + 'test/'
+        os.makedirs(self.args.checkpoint_dir, exist_ok=True)
+        os.makedirs(self.args.test_path, exist_ok=True)
+        self.args.trained = len(os.listdir(self.args.checkpoint_dir))
+        return os.path.join(self.args.checkpoint_dir, f'checkpoint_{self.args.trained}.pth')
 
     def _get_data(self, flag):
         returns = {}
@@ -78,20 +96,30 @@ class ExpPowerForecast:
     def _select_optimizer(self):
         return optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
-    def vali(self, vali_loader) -> float:
+    def _init_writer(self):
+        with open("neptune.yaml", 'r') as stream:
+            config = yaml.safe_load(stream)
+
+        self.writer = neptune.init_run(
+            with_id=self.args.neptune_id,
+            project=config['project'],
+            api_token=config['api_token']
+        ) if self.args.neptune else EmptyWriter()
+
+    def validation(self, data_loader) -> float:
         """Perform validation on the model.
 
         Args:
-            vali_loader (DataLoader): Validation data loader.
+            data_loader (DataLoader): Validation data loader.
 
         Returns:
             float: The validation loss.
         """
-        total_loss = np.zeros(len(vali_loader))
+        total_loss = np.zeros(len(data_loader))
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(data_loader):
                 if self.args.use_gpu:
                     batch_x = batch_x.cuda(non_blocking=True)
                     batch_y = batch_y.cuda(non_blocking=True)
@@ -104,7 +132,7 @@ class ExpPowerForecast:
                     outputs = outputs[:, :, -1:]
                     batch_y = batch_y[:, :, -1:]
 
-                    loss = criterion(outputs, batch_y)
+                    loss = self.criterion(outputs, batch_y)
 
                 total_loss[i] = loss.item()
         total_loss = np.average(total_loss)
@@ -119,11 +147,10 @@ class ExpPowerForecast:
         """
 
         train_data, train_loader = self._get_data(flag='train')
-        vali_data, vali_loader = self._get_data(flag='val')
+        val_data, val_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
 
         model_optim = self._select_optimizer()
-        self.criterion = nn.MSELoss()
 
         self._init_writer()
         if self.args.tags:
@@ -175,8 +202,8 @@ class ExpPowerForecast:
 
             print(prefix + 'validating...', end='')
             t = time.time()
-            vali_loss = self.vali(vali_loader)
-            test_loss = self.vali(test_loader)
+            vali_loss = self.validation(val_loader)
+            test_loss = self.validation(test_loader)
             print(f' | {translate_seconds(time.time() - t)}')
 
             self.writer['train/loss'].append(train_loss)
@@ -196,18 +223,15 @@ class ExpPowerForecast:
 
         return self.model
 
-    def _init_writer(self):
-        with open("neptune_config.yaml", 'r') as stream:
-            config = yaml.safe_load(stream)
-
-        self.writer = neptune.init_run(
-            with_id=self.args.neptune_id,
-            project=config['project'],
-            api_token=config['api_token']
-        ) if self.args.neptune else EmptyWriter()
-
     def test(self, test_only=False):
         """Test the model.
+
+        Testing starts by initializing the writer and setting the device to CPU,
+        and then obtaining the test data and loader。
+        The model is set to evaluation mode and predictions are made batch-wise and stored in `result_df`.
+        The target and prediction values are de-standardized and plotted.
+        Evaluation metrics are then calculated and stored in the writer and the `metric.json`.
+        The `result_df` is stored in `result.csv`.
 
         Args:
             test_only: Whether to only test the model without training.
@@ -220,7 +244,7 @@ class ExpPowerForecast:
         """
 
         if test_only:
-            if self.args.neptune_id is None:
+            if self.args.neptune_id is None and self.args.neptune:
                 raise ValueError('Specify neptune id')
             self._init_writer()
 
@@ -236,8 +260,8 @@ class ExpPowerForecast:
         result_df.loc[:, 'prediction'] = np.nan
 
         num_batches = len(test_loader)
-        preds = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
-        trues = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
+        prediction = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
+        target = np.zeros((num_batches, test_loader.batch_size, self.args.pred_len))
 
         self.model.eval()
         pred_time = 0
@@ -251,11 +275,11 @@ class ExpPowerForecast:
                 outputs = outputs[:, :, -1:].numpy().squeeze()
                 batch_y = batch_y[:, :, -1:].numpy().squeeze()
 
-                preds[i, :] = outputs
-                trues[i, :] = batch_y
+                prediction[i, :] = outputs
+                target[i, :] = batch_y
 
-                for i in range(test_loader.batch_size):
-                    result_df.iloc[indices_y[0][i].item():indices_y[1][i].item(), 1] = outputs[i, :]
+                for j in range(test_loader.batch_size):
+                    result_df.iloc[indices_y[0][j].item():indices_y[1][j].item(), 1] = outputs[j, :]
 
         pred_time /= num_batches
         print(f'Average Interference speed: {pred_time:.5f}sample/s\n')
@@ -267,21 +291,18 @@ class ExpPowerForecast:
         result_df_original.iloc[:, 0] = de_standardize(result_df_original.iloc[:, [0]])
         result_df_original.iloc[:, 1] = de_standardize(result_df_original.iloc[:, [1]])
 
-        figs = plot_test(result_df), plot_test(result_df_original)
-        for i, fig in enumerate(figs):
-            self.writer['result'].append(fig)
-            fig.savefig(os.path.join(self.args.result_path, f'result_{i}.pdf'))
+        fig = plot_test(result_df_original)
+
+        self.writer['result'].append(fig)
+        fig.savefig(os.path.join(self.args.test_path, f'result.pdf'))
+
+        prediction = de_standardize(prediction.reshape(-1, 1))
+        target = de_standardize(target.reshape(-1, 1))
 
         result = dict()
-        preds = preds.reshape(-1, 1)
-        trues = trues.reshape(-1, 1)
-        self.writer['30minMSE'] = (
-                result_df_original.resample('30min').mean().dropna(inplace=False).diff(axis=1).iloc[:,
-                -1].values ** 2).mean()
-
-        preds = de_standardize(preds)
-        trues = de_standardize(trues)
-        result['de_standardized'] = metric(preds, trues)
+        result['de_standardized'] = metric(prediction, target)
+        result['clipped'] = metric(np.clip(prediction, target.min(), target.max()), target)
+        result['30min_averaged'] = metric(prediction.reshape(-1, 2).mean(axis=1), target.reshape(-1, 2).mean(axis=1))
 
         for k, dic in result.items():
             print(k + ':')
@@ -289,12 +310,12 @@ class ExpPowerForecast:
                 self.writer[f'{k}/{key}'] = value
                 print(f'{key}: {value:.4f}')
 
-        with open(f'{self.args.result_path}/accuracy.json', 'w', encoding='utf8') as json_file:
+        with open(f'{self.args.test_path}/metrics.json', 'w', encoding='utf8') as json_file:
             json.dump(result, json_file, ensure_ascii=False)
 
         with open(f'{self.args.result_path}/scalers.pkl', 'wb') as f:
             pickle.dump(test_data.dataset.scalers, f)
 
-        result_df_original.to_csv(os.path.join(self.args.result_path, 'result_df.csv'))
+        result_df_original.to_csv(os.path.join(self.args.test_path, 'result_df.csv'))
 
         self.writer.stop()

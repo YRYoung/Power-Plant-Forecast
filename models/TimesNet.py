@@ -2,7 +2,7 @@ import torch
 import torch.fft
 import torch.nn as nn
 
-from layers.Conv_Blocks import Inception_Block_V1
+from layers.Conv_Blocks import InceptionBlockV1
 from layers.Embed import DataEmbedding
 
 
@@ -25,11 +25,11 @@ class TimesBlock(nn.Module):
         self.k = configs.top_k
         # parameter-efficient design
         self.conv = nn.Sequential(
-            Inception_Block_V1(configs.d_model, configs.d_ff,
-                               num_kernels=configs.num_kernels),
+            InceptionBlockV1(configs.d_model, configs.d_ff,
+                             num_kernels=configs.num_kernels),
             nn.GELU(),
-            Inception_Block_V1(configs.d_ff, configs.d_model,
-                               num_kernels=configs.num_kernels)
+            InceptionBlockV1(configs.d_ff, configs.d_model,
+                             num_kernels=configs.num_kernels)
         )
 
     def forward(self, x):
@@ -96,13 +96,13 @@ class Model(nn.Module):
 
     def forecast(self, x_enc, x_mark_enc, y_enc, y_mark_enc):
         # Normalization from Non-stationary Transformer
-        means = x_enc.mean(1, keepdim=True)  # .detach()
+        means = x_enc.mean(1, keepdim=True)
         x_enc = x_enc - means
-        stdev = torch.sqrt(torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
-        x_enc /= stdev
+        stddev = torch.sqrt(torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
+        x_enc /= stddev
 
         # embedding
-        x_enc_out = self.x_enc_embedding(x_enc, x_mark_enc)  # [B,T,C]
+        x_enc_out = self.x_enc_embedding(x_enc, x_mark_enc)
         y_enc_out = self.y_enc_embedding(y_enc, y_mark_enc)
 
         enc_out = torch.concat([x_enc_out, y_enc_out], dim=1)
@@ -119,10 +119,10 @@ class Model(nn.Module):
         dec_out = self.projection(enc_out)
 
         # De-Normalization from Non-stationary Transformer
-        dec_out = dec_out * (stdev[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
+        dec_out = dec_out * (stddev[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
         dec_out = dec_out + (means[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len + self.seq_len, 1))
         return dec_out
 
     def forward(self, x_enc, x_mark_enc, y_enc, y_mark_enc):
         dec_out = self.forecast(x_enc, x_mark_enc, y_enc, y_mark_enc)
-        return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+        return dec_out[:, -self.pred_len:, :]

@@ -3,9 +3,9 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 
-from DataProvider.datasets import DatasetCustom
+from DataProvider.datasets import CustomDataset
 from utils.timefeatures import time_features
 
 
@@ -28,9 +28,9 @@ def custom_data_provider(args):
             scalers = pickle.load(f)
     else:
         scalers = None
-    data, data_stamp, data_time, scalers = csv_loader(file_path=args.data_path, scale=True,
+    data, data_stamp, data_time, scalers = csv_loader(file_path=args.data_path, scale=True, source=args.data_source,
                                                       freq=args.freq, debug=args.debug, scalers=scalers)
-    full_set = DatasetCustom(
+    full_set = CustomDataset(
         data=data, data_stamp=data_stamp, data_time=data_time, scalers=scalers,
         seq_len=args.seq_len, pred_len=args.pred_len, gap_len=args.gap_len
     )
@@ -40,7 +40,11 @@ def custom_data_provider(args):
     val_len = int(val_ratio * len(full_set))
     train_len = len(full_set) - 2 * val_len
     print(f'val/test_len: {val_len} | train_len: {train_len}')
-    allsets = random_split(full_set, [train_len, val_len, val_len])
+
+    indices = np.arange(len(full_set))
+    all_sets = [Subset(full_set, i) for i in [indices[:train_len],
+                                              indices[train_len:train_len + val_len],
+                                              indices[train_len + val_len:]]]
 
     def provide(flag):
         """Provide the dataset and data loader based on the flag.
@@ -52,11 +56,12 @@ def custom_data_provider(args):
             tuple: A tuple containing the dataset and data loader.
 
         """
-        dataset = allsets[type_map[flag]]
+        dataset = all_sets[type_map[flag]]
         if flag == 'final':
             data_loader = DataLoader(
                 dataset,
-                batch_size=64,
+                batch_size=args.batch_size,
+                shuffle=False,
                 drop_last=True)
         else:
             data_loader = DataLoader(
@@ -73,7 +78,7 @@ def custom_data_provider(args):
     return lambda flag: provide(flag)
 
 
-def csv_loader(file_path, scale, freq, debug, scalers=None):
+def csv_loader(file_path, scale, freq, debug, scalers=None, source='B'):
     """ Load data from a CSV file and preprocess it for further analysis.
 
     Parameters:
@@ -82,6 +87,7 @@ def csv_loader(file_path, scale, freq, debug, scalers=None):
         freq (str): The frequency of the data timestamps.
         debug (bool): Whether to run in debug mode or not.
         scalers (list, optional): List of scalers to use for scaling the data. Defaults to None.
+        source (str): The source of the data. Defaults to 'B'.
 
     Returns:
         tuple: A tuple containing the preprocessed data, the timestamp data,
@@ -92,7 +98,10 @@ def csv_loader(file_path, scale, freq, debug, scalers=None):
     df_raw = pd.read_csv(file_path, index_col=0)
     df_raw.index = pd.to_datetime(df_raw.index)
     # '2020-03-01':
-    df_raw = df_raw.loc['2020-03-01':, ['B', 'target']]
+    if source.lower() != 'all':
+        columns = list(source) + ['target']
+        print(f'Using data {columns}')
+        df_raw = df_raw.loc[:, columns]
     if debug:
         df_raw = df_raw.iloc[-500:, :]
 

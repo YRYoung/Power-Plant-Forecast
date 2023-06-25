@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 
-class DatasetCustom(Dataset):
+class CustomDataset(Dataset):
     """A custom dataset class for custom data.
 
     Args:

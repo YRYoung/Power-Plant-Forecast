@@ -19,6 +19,7 @@ import pandas as pd
 from pandas.tseries import offsets
 from pandas.tseries.frequencies import to_offset
 
+
 class TimeFeature:
     def __init__(self):
         pass
@@ -86,7 +87,7 @@ class WeekOfYear(TimeFeature):
         return (index.isocalendar().week - 1) / 52.0 - 0.5
 
 
-class Yearafter2010(TimeFeature):
+class Year(TimeFeature):
     """Year number - 2010"""
 
     def __call__(self, index: pd.DatetimeIndex) -> np.ndarray:
@@ -116,7 +117,7 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
             DayOfWeek,
             DayOfMonth,
             DayOfYear,
-            # Yearafter2000,
+            # Year,
         ],
         offsets.Second: [
             SecondOfMinute,

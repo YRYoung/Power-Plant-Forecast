@@ -1,5 +1,3 @@
-import random
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -17,12 +15,6 @@ def translate_seconds(seconds):
 
     Returns:
         A string in the format "HH:MM:SS" representing the translated time.
-
-    Examples:
-        >>> translate_seconds(3665)
-        '01:01:05'
-        >>> translate_seconds(7200)
-        '02:00:00'
     """
     minutes, secs = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
@@ -45,6 +37,8 @@ def adjust_learning_rate(optimizer, epoch, args):
             2: 5e-5, 4: 1e-5, 6: 5e-6, 8: 1e-6,
             10: 5e-7, 15: 1e-7, 20: 5e-8
         }
+    else:
+        raise ValueError('Unknown lr adjustment type')
     if epoch in lr_adjust.keys():
         lr = lr_adjust[epoch]
         for param_group in optimizer.param_groups:
@@ -73,7 +67,7 @@ class EarlyStopping:
 
     """
 
-    def __init__(self, save_path, patience=7, verbose=False, tolerance=0, val_loss_min=np.Inf):
+    def __init__(self, save_path, patience, verbose=False, tolerance=0, val_loss_min=np.Inf):
         self.save_path = save_path
         self.patience = patience
         self.verbose = verbose
@@ -123,13 +117,12 @@ class EarlyStopping:
 
 
 class EmptyWriter:
-
     class EmptyList:
         def __init__(self):
             pass
 
-    def append(self, *args, **kwargs):
-        pass
+        def append(self, *args, **kwargs):
+            pass
 
     def __init__(self):
         self.empty_list = self.EmptyList()
@@ -138,6 +131,9 @@ class EmptyWriter:
         return self.empty_list
 
     def __setitem__(self, key, value):
+        pass
+
+    def stop(self):
         pass
 
 
@@ -157,15 +153,3 @@ def plot_test(result_df):
     sns.lineplot(data=result_df, palette=['red', 'blue'], ax=ax)
     pic_id += 1
     return fig
-
-
-def set_seed(seed):
-    """Sets the random seed for reproducibility.
-
-    Args:
-        seed (int): The seed value to set for random number generators.
-
-    """
-    random.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)

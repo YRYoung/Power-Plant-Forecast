@@ -89,13 +89,9 @@ folder for more examples.
 
 ## Contact
 
-If you have any questions or suggestions, feel free to contact y.runyang@outlook.com
-
-or describe it in Issues.
+If you have any questions or suggestions, feel free to describe it in Issues.
 
 ## Credits
 
 - [Original TimesNet model](https://arxiv.org/abs/2210.02186)
 - [Time-Series-Library](https://github.com/thuml/Time-Series-Library)
-
-

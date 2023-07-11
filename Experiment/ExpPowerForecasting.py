@@ -40,7 +40,7 @@ def inference(use_gpu=True, **kwargs):
         args_list += [f'--{key}', f'{value}']
     args = parser.parse_args(args=args_list)
     args.use_gpu = torch.cuda.is_available() and use_gpu
-    set_session_id(args)
+    set_session_id(args, args.iter)
     exp = ExpPowerForecast(args)
     exp.model.eval()
     with open(f'{args.result_path}/scalers.pkl', 'rb') as f:
@@ -75,14 +75,16 @@ class ExpPowerForecast:
         device_name = 'cuda' if args.use_gpu else 'cpu'
         self.device = torch.device(device_name)
 
-        self.args.enc_in = len(list(args.data_source)) + 1
-        self.args.c_out = 1
+        self.args.enc_in = len(list(args.data_source)) + 1  # set encoder input size
+        self.args.c_out = 1  # set decoder output size
 
         self.model = TimesNet.Model(self.args).float()
 
         self.best_model_path = self._set_path()
 
-        self.early_stopping = self._set_early_stopping(device_name)
+        print(f'{"Trained" if self.args.trained else "New"} model loaded on {device_name}')
+
+        self.early_stopping = self._set_early_stopping()
 
         self.model.to(self.device)
 
@@ -90,10 +92,10 @@ class ExpPowerForecast:
 
         self.criterion = nn.MSELoss()
 
-    def _set_early_stopping(self, device_name):
+    def _set_early_stopping(self):
         val_loss = np.Inf
         args = self.args
-        print(f'{"Trained" if args.trained else "New"} model loaded on {device_name}')
+
         if args.trained:
             previous_checkpoint = f'checkpoint_{args.trained - 1}.pth'
             checkpoint = torch.load(self.args.checkpoint_dir + previous_checkpoint, map_location=self.device)
@@ -108,10 +110,13 @@ class ExpPowerForecast:
 
     def _set_path(self):
         self.args.result_path = f'./results/{self.args.session_id}/'
+
         self.args.checkpoint_dir = self.args.result_path + 'checkpoints/'
         self.args.test_path = self.args.result_path + 'test/'
+
         os.makedirs(self.args.checkpoint_dir, exist_ok=True)
         os.makedirs(self.args.test_path, exist_ok=True)
+
         self.args.trained = len(os.listdir(self.args.checkpoint_dir))
         return os.path.join(self.args.checkpoint_dir, f'checkpoint_{self.args.trained}.pth')
 
@@ -120,9 +125,6 @@ class ExpPowerForecast:
         if flag not in returns:
             returns[flag] = self.provider(flag=flag)
         return returns[flag]
-
-    def _select_optimizer(self):
-        return optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
     def _init_writer(self):
         with open("neptune.yaml", 'r') as stream:
@@ -178,7 +180,7 @@ class ExpPowerForecast:
         val_data, val_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
 
-        model_optim = self._select_optimizer()
+        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
         self._init_writer()
         if self.args.tags:
@@ -198,6 +200,7 @@ class ExpPowerForecast:
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
+
                 if self.args.use_gpu:
                     batch_x = batch_x.cuda(non_blocking=True)
                     batch_y = batch_y.cuda(non_blocking=True)

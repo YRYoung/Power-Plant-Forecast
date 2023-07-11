@@ -39,10 +39,10 @@ def add_args():
     parser.add_argument('--d_model', type=int, default=64, help='dimension of model')
     parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
     parser.add_argument('--d_ff', type=int, default=64, help='dimension of fcn')
-    parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
+    parser.add_argument('--dropout', type=float, default=0.1, help='dropout ratio')
 
     # training settings
-    parser.add_argument('--itr', type=int, default=1,
+    parser.add_argument('--iter', type=int, default=1,
                         help='perform training for the specified number of iterations with different seeds')
     parser.add_argument('--num_workers', type=int, default=2, help='number of workers for data loader')
     parser.add_argument('--max_epochs', type=int, default=50,

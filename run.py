@@ -22,7 +22,7 @@ if __name__ == '__main__':
     print_len = 15
     if args.train:
         first_seed = 2021
-        for ii in range(args.itr):
+        for ii in range(1, args.iter + 1):
             set_seed(first_seed + ii)
             set_session_id(args, ii)
 
@@ -35,7 +35,7 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
     else:
 
-        set_session_id(args)
+        set_session_id(args, args.iter)
         args.load_min_loss = True
 
         exp = ExpPowerForecast(args)

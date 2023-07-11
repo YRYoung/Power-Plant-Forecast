@@ -5,6 +5,7 @@ TimesNet Model for Forecasting Power Plant Output
     :start-after: <!-- start intro -->
     :end-before: <!-- end intro -->
 
+----------------------------------------
 
 Installation
 -------------------
@@ -30,13 +31,11 @@ Guide
 
 Tutorial
 ~~~~~~~~~~~~~~~
-Please check jupyter notebooks in `/Tutorials` folder for more examples:
+Please check jupyter _`notebooks` in `/Tutorials` folder for more examples:
 
 1. :download:`Data Prepocessing.ipynb <../../Tutorials/Data Prepocessing.ipynb>`.
 2. :download:`Train, Test and Predict.ipynb <../../Tutorials/Train, Test and Predict.ipynb>`
 3. :download:`Testing Result Visualization.ipynb <../../Tutorials/Testing Result Visualization.ipynb>`
-
-
 
 .. toctree::
    :maxdepth: 2
@@ -44,8 +43,14 @@ Please check jupyter notebooks in `/Tutorials` folder for more examples:
 
    modules
 
+----------------------------------------
 
+📈 Future Improvements
+-------------------
 
-
+.. include:: ../../README.md
+  :parser: myst_parser.sphinx_
+  :start-after: <!-- start rest -->
+  :end-before: <!-- end rest -->
 
 

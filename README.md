@@ -73,8 +73,10 @@ Alternatively, check [Data Preprocessing](Tutorials/Data Prepocessing.ipynb), [T
 Test and Predict.ipynb) and [Visualization](Tutorials/Testing Result Visualization.ipynb) notebooks in the `/Tutorials`
 folder for more examples.
 
-## Future Improvements
 
+
+## Future Improvements
+<!-- start rest -->
 - Implement transfer learning to enhance inference speed and potentially gain insights into model interpretation.
 - Utilize linear interpolation to augment the number of data samples.
 - Enhance data preprocessing techniques:
@@ -83,6 +85,7 @@ folder for more examples.
 - Incorporate the characteristic of power threshold in the model input, and if possible,
   use a combination of hinge loss and mean squared error (MSE) as the loss function.
 
+<!-- end rest -->
 
 ## Contact
 
@@ -94,3 +97,5 @@ or describe it in Issues.
 
 - [Original TimesNet model](https://arxiv.org/abs/2210.02186)
 - [Time-Series-Library](https://github.com/thuml/Time-Series-Library)
+
+

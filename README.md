@@ -86,9 +86,7 @@ folder for more examples.
 
 ## Contact
 
-If you have any questions or suggestions, feel free to contact y.runyang@outlook.com
-
-or describe it in Issues.
+If you have any questions or suggestions, feel free to describe it in Issues.
 
 ## Credits
 

@@ -2,7 +2,7 @@
 
 <!-- start intro -->
 
-![forecast](.\docs\source\newplot.png)
+![forecast](./docs/source/newplot.png)
 
 This project is an forked and modified version of the state-of-the-art [TimesNet](https://arxiv.org/abs/2210.02186)
 model for time series analysis.
